@@ -12,6 +12,7 @@ on:
 
 permissions:
   contents: read
+  actions: write
 
 jobs:
   build:
@@ -24,6 +25,7 @@ jobs:
       run: |
         if ! find . -type f -name "*.py" | grep -q .; then
           echo "No Python files found. Exiting workflow."
+          gh run cancel ${{ github.run_id }}
           exit 0
         fi
     - name: Set up Python 3.12

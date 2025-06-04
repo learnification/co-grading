@@ -7,20 +7,17 @@ assignees: matt-ham
 
 ---
 
-## Description
-Provide a detailed description of task.
+## Goal
+Provide a detailed description of the task and its purpose.
 
-## Acceptance Criteria (Scope)
-Define what success looks like by listing all the subtasks required to complete this ticket.
+## Task
+What steps need to be taken to achieve the goal?
 - [ ] Subtask 1
 - [ ] Subtask 2
 - [ ] Subtask 3
 
 ## Technical Requirements + Dependencies
-Describe any technical requirements and any dependencies related to this task.
+Describe any technical requirements and dependencies related to this task.
 
-## Out of Scope
-Describe what is NOT includes in this task.
-
-## Notes
-Add aby additional notes or context.
+## Output
+What is the expected result or deliverable when the task is complete?

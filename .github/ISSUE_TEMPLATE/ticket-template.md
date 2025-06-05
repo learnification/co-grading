@@ -10,6 +10,10 @@ assignees: matt-ham
 ## Goal
 Provide a detailed description of the task and its purpose.
 
+### User Stories
+.....
+
+
 ## Task
 What steps need to be taken to achieve the goal?
 - [ ] Subtask 1
@@ -18,6 +22,10 @@ What steps need to be taken to achieve the goal?
 
 ## Technical Requirements + Dependencies
 Describe any technical requirements and dependencies related to this task.
+
+## Story Point Estimate
+e.g. 1
+
 
 ## Output
 What is the expected result or deliverable when the task is complete?

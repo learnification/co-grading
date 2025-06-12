@@ -1,11 +1,11 @@
 from typing import List, Optional
 from pydantic import BaseModel, Field, RootModel
-
+from app.web.db.models import RubricCriterion
 
 class Assignment(BaseModel):
     name: str = Field(..., description="Name of the assignment")
     description: str = Field(..., description="Description of the assignment")
-    rubric: Optional[str] = Field(None, description="Rubric for the assignment")
+    rubric: Optional[List[RubricCriterion]] = Field(None, description="Rubric for the assignment")
     max_points: float = Field(..., description="Maximum points for the assignment")
 
 

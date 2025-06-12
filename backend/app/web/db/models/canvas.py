@@ -51,6 +51,23 @@ class SubmissionType(str, Enum):
     online_quiz = "online_quiz"
     media_recording = "media_recording"
 
+class RubricRating(BaseModel):
+    id: str
+    description: Optional[str] = None
+    long_description: Optional[str] = None
+    points: int
+
+class RubricCriterion(BaseModel):
+    """
+    Schema representing criterion for a Rubric
+    """
+    id: str
+    description: Optional[str] = None
+    long_description: Optional[str] = None
+    points: int
+    criterion_use_range: bool
+    ratings: Optional[List[RubricRating]] = None
+
 
 class Assignment(BaseModel):
     """
@@ -79,6 +96,7 @@ class Assignment(BaseModel):
     submission_types: List[SubmissionType]
     has_submitted_submissions: bool
     needs_grading_count: Optional[int] = None
+    rubric: List[RubricCriterion]
 
     class Config:
         from_attributes = True

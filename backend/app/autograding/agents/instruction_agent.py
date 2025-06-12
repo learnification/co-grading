@@ -4,9 +4,21 @@ from langchain_ollama import ChatOllama
 from app.autograding.llms import llm_map
 from app.autograding.models import GradingArgs
 from app.web.api import get_evaluation_components
-from app.web.db.models import Assignment
+from app.web.db.models import Assignment, RubricCriterion
 from app.web.utils import logger
 import re
+
+def format_rubric(rubric: List[RubricCriterion]) -> str:
+    lines = []
+    for i, criterion in enumerate(rubric, start=1):
+        crit_desc = criterion.description.strip() if criterion.description else "No description"
+        lines.append(f"        {i}. {crit_desc} ({criterion.points} points)")
+        if criterion.ratings:
+            for rating in criterion.ratings:
+                rating_desc = rating.description.strip() if rating.description else "No description"
+                long_desc = f": {rating.long_description.strip()}" if rating.long_description else ""
+                lines.append(f"             - {rating_desc} ({rating.points} pts){long_desc}")
+    return "\n".join(lines)
 
 
 def generate_queries(
@@ -134,8 +146,8 @@ def generate_instruction(
 
     if grading_args.assignment.rubric:
         input_text += f"""\n
-        This is the Rubric for the assignment, You must Follow the rubric to create guideline.
-        Rubric: {grading_args.assignment.rubric}"""
+        This is the Rubric for the assignment, You must follow this rubric to create guideline:
+        \n{format_rubric(grading_args.assignment.rubric)}"""
 
     if retrieved_documents:
         input_text += (

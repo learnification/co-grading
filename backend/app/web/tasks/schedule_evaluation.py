@@ -20,7 +20,7 @@ def schedule_evaluation(self, request_data: dict):
                 "name": request.assignment.name,
                 "description": request.assignment.description,
                 "max_points": request.assignment.points_possible,
-                # "rubric": request.assignment.rubric,
+                "rubric": request.assignment.rubric,
             },
         )
 

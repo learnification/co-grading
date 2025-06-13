@@ -23,7 +23,7 @@ What steps need to be taken to achieve the goal?
 Describe any technical requirements and dependencies related to this task.
 
 ## Story Point Estimate
-e.g. T-shirt size (XS, S, M, L, XL) OR Fib. seq. (1, 2, 3, 5, 8)
+- Fib. seq. (1, 2, 3, 5, 8)
 
 ## Output
 What is the expected result or deliverable when the task is complete?

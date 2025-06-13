@@ -11,8 +11,7 @@ assignees: matt-ham
 Provide a detailed description of the task and its purpose.
 
 ### User Stories
-.....
-
+As a [persona], I [want to], [so that]
 
 ## Task
 What steps need to be taken to achieve the goal?
@@ -24,8 +23,10 @@ What steps need to be taken to achieve the goal?
 Describe any technical requirements and dependencies related to this task.
 
 ## Story Point Estimate
-e.g. 1
-
+e.g. T-shirt size (XS, S, M, L, XL) OR Fib. seq. (1, 2, 3, 5, 8)
 
 ## Output
 What is the expected result or deliverable when the task is complete?
+
+## Resources/Documentation
+Any relevant work or documentation available to help with this task?

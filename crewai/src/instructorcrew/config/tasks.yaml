@@ -1,0 +1,16 @@
+grading_task:
+  description: >
+    Grade this assignment with {strictness_level} standards. Use a {feedback_tone} tone 
+    and provide {feedback_length} feedback. 
+
+    Assignment Details: {assignment}
+
+    Rubric: {rubric}
+
+    Student Submission: {submission}
+
+    Evaluate the submission against the rubric criteria and provide detailed feedback.
+  expected_output: >
+    {feedback_length} feedback in a {feedback_tone} tone, graded with {strictness_level} 
+    standards. Include specific point deductions and suggestions for improvement.
+  agent: ta_agent

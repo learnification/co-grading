@@ -6,7 +6,7 @@ from app.web.db.models import RequestGradingDto
 from app.web.api import add_document_to_component, get_evaluation_components
 from app.web.utils.logger import logger
 
-def process_grading_request(request: RequestGradingDto, task_id: str) -> dict:
+def generate_feedback(request: RequestGradingDto, task_id: str) -> dict:
     """
     Function for processing grading requests. 
     Generates a grading guideline, uses guideline to build feedback, and returns

@@ -5,14 +5,14 @@ from app.web.db.models.user_settings import CustomSettings
 from app.web.utils.logger import logger
 from app.celery import celery_app
 from app.web.db.models import RequestGradingDto
-from app.autograding.grading_handler import process_grading_request
+from app.autograding.grading_handler import generate_feedback
 
 
 @celery_app.task(bind=True, max_retries=3, default_retry_delay=60)
 def schedule_evaluation(self, request_data: dict):
     try:
         request = RequestGradingDto.model_validate(request_data)
-        feedbacks = process_grading_request(request,self.request.id)
+        feedbacks = generate_feedback(request,self.request.id)
         return feedbacks
     except Exception as e:
         logger.error(f"Error scheduling evaluations with aggregation: {e}")

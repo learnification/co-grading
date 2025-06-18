@@ -1,0 +1,1 @@
+import{z as t,l as e,A as n}from"./canvasApi-B3XcU1Pv.js";const d=async a=>{const s={id:await t(a),request:a,details:{status:e.PENDING,result:null,traceback:null},createdAt:new Date,isViewed:!1};return await n(s),s};export{d as p};

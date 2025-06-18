@@ -3,7 +3,7 @@ from typing import Optional
 from langchain_chroma import Chroma
 from langchain_ollama import OllamaEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from app.autograding.documents.pdf_loader import load_pdf
+from app.autograding.documents.document_loader import load_pdf
 from app.autograding.models import GradingArgs
 from app.web.utils import logger
 from chromadb.config import Settings

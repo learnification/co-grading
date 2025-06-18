@@ -1,0 +1,90 @@
+{
+  "../../../../../@crx/manifest": {
+    "file": "assets/crx-manifest.js-c9VwPXxD.js",
+    "name": "crx-manifest.js",
+    "src": "../../../../../@crx/manifest",
+    "isEntry": true
+  },
+  "_Textarea-CXtSScXf.js": {
+    "file": "assets/Textarea-CXtSScXf.js",
+    "name": "Textarea",
+    "imports": [
+      "_createLucideIcon-D6pmb5t8.js"
+    ]
+  },
+  "_canvasApi-B3XcU1Pv.js": {
+    "file": "assets/canvasApi-B3XcU1Pv.js",
+    "name": "canvasApi"
+  },
+  "_createLucideIcon-!~{004}~.js": {
+    "file": "assets/createLucideIcon-BtGBIKuN.css",
+    "src": "_createLucideIcon-!~{004}~.js"
+  },
+  "_createLucideIcon-D6pmb5t8.js": {
+    "file": "assets/createLucideIcon-D6pmb5t8.js",
+    "name": "createLucideIcon",
+    "css": [
+      "assets/createLucideIcon-BtGBIKuN.css"
+    ]
+  },
+  "_manifest-D274No9N.js": {
+    "file": "assets/manifest-D274No9N.js",
+    "name": "manifest"
+  },
+  "_request-Bv5M4Dhc.js": {
+    "file": "assets/request-Bv5M4Dhc.js",
+    "name": "request",
+    "imports": [
+      "_canvasApi-B3XcU1Pv.js"
+    ]
+  },
+  "index.tsx-loader.js": {
+    "file": "assets/index.tsx-loader-Ds6KdZKB.js",
+    "src": "index.tsx-loader.js"
+  },
+  "src/pages/background/index.ts": {
+    "file": "assets/index.ts-Bdb5p2Gd.js",
+    "name": "index.ts",
+    "src": "src/pages/background/index.ts",
+    "isEntry": true,
+    "imports": [
+      "_canvasApi-B3XcU1Pv.js"
+    ]
+  },
+  "src/pages/content/assignments/index.tsx": {
+    "file": "assets/index.tsx-BPGTB-HG.js",
+    "name": "index.tsx",
+    "src": "src/pages/content/assignments/index.tsx",
+    "isEntry": true,
+    "imports": [
+      "_createLucideIcon-D6pmb5t8.js",
+      "_Textarea-CXtSScXf.js",
+      "_canvasApi-B3XcU1Pv.js",
+      "_request-Bv5M4Dhc.js"
+    ]
+  },
+  "src/pages/options/index.html": {
+    "file": "assets/index.html-HaVv625t.js",
+    "name": "index.html",
+    "src": "src/pages/options/index.html",
+    "isEntry": true,
+    "imports": [
+      "_manifest-D274No9N.js",
+      "_createLucideIcon-D6pmb5t8.js",
+      "_Textarea-CXtSScXf.js",
+      "_canvasApi-B3XcU1Pv.js"
+    ]
+  },
+  "src/pages/popup/index.html": {
+    "file": "assets/index.html-cA56Glb0.js",
+    "name": "index.html",
+    "src": "src/pages/popup/index.html",
+    "isEntry": true,
+    "imports": [
+      "_manifest-D274No9N.js",
+      "_createLucideIcon-D6pmb5t8.js",
+      "_canvasApi-B3XcU1Pv.js",
+      "_request-Bv5M4Dhc.js"
+    ]
+  }
+}

@@ -1,0 +1,58 @@
+{
+  "manifest_version": 3,
+  "name": "FeedbackAI",
+  "description": "A tool to help educators grade assignments in Canvas.",
+  "version": "1.0.0",
+  "options_ui": {
+    "page": "src/pages/options/index.html",
+    "open_in_tab": true
+  },
+  "background": {
+    "service_worker": "service-worker-loader.js",
+    "type": "module"
+  },
+  "action": {
+    "default_popup": "src/pages/popup/index.html",
+    "default_icon": {
+      "48": "images/icon48.png"
+    }
+  },
+  "icons": {
+    "128": "images/icon128.png"
+  },
+  "permissions": [
+    "storage",
+    "alarms"
+  ],
+  "content_scripts": [
+    {
+      "js": [
+        "assets/index.tsx-loader-Ds6KdZKB.js"
+      ],
+      "matches": [
+        "https://*/courses/*/assignments/*"
+      ],
+      "css": [
+        "assets/createLucideIcon-BtGBIKuN.css"
+      ]
+    }
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self';"
+  },
+  "web_accessible_resources": [
+    {
+      "matches": [
+        "https://*/*"
+      ],
+      "resources": [
+        "assets/createLucideIcon-D6pmb5t8.js",
+        "assets/Textarea-CXtSScXf.js",
+        "assets/canvasApi-B3XcU1Pv.js",
+        "assets/request-Bv5M4Dhc.js",
+        "assets/index.tsx-BPGTB-HG.js"
+      ],
+      "use_dynamic_url": false
+    }
+  ]
+}

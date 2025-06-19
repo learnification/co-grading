@@ -13,7 +13,7 @@ def mock_validate(mocker):
     return mocker.patch('app.web.tasks.schedule_evaluation.RequestGradingDto.model_validate')
 
 def test_success(mocker, mock_generate_feedback, mock_validate):    
-
+    """Test successful feedback generation and task result."""
     mock_request = mocker.Mock()
     mock_validate.return_value = mock_request
     expected_feedbacks = {
@@ -40,7 +40,7 @@ def test_success(mocker, mock_generate_feedback, mock_validate):
 
 
 def test_failure_retries(mocker, mock_generate_feedback, mock_validate):
-
+    """Test task retries on failure during feedback generation."""
     mock_retry = mocker.patch.object(schedule_evaluation, 'retry')
     
     mock_request = mocker.Mock()

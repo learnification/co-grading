@@ -17,50 +17,52 @@ def mock_get_evaluation_components(mocker):
         return_value=mock_components
     )
 
-def test_update_score_valid(mock_get_evaluation_components, mocker):
-    """Test updating a score with a valid value."""
+@pytest.mark.parametrize("valid_score", [0, 1])
+def test_update_score_valid(mock_get_evaluation_components, mocker, valid_score):
+    """Test updating a score with valid values."""
     mock_score_evaluation = mocker.patch(
         "app.web.endpoints.score_views.score_evaluation"
     )
 
+    response = client.post('/api/v1/scores', json={'evaluation_id': 'test-id', 'score': valid_score})
+    assert response.json() == {"message": "Score updated"}
+    assert response.status_code == 200
 
-    result = update_score(evaluation_id="test-id", score=1)
-    assert result == {"message": "Score updated"}
-    
-    mock_score_evaluation.assert_called_once_with(1, "llama3.2")
+    mock_get_evaluation_components.assert_called_once_with("test-id")
+    mock_score_evaluation.assert_called_once_with(valid_score, "llama3.2")
 
-def test_update_score_invalid_above_range(mock_get_evaluation_components):
-    """Test score above valid range raises HTTPException."""
-    with pytest.raises(HTTPException) as exc_info:
-        update_score(evaluation_id="test-id", score=2)
+@pytest.mark.parametrize("invalid_score", [-10, -2, 2, 10])
+def test_update_score_invalid_range_int(invalid_score):
+    """Test integer scores outside valid range."""
+    response = client.post('/api/v1/scores', json={'evaluation_id': 'test-id', 'score': invalid_score})
     
-    assert exc_info.value.status_code == 400
-    assert exc_info.value.detail == "Score must be a float between -1 and 1"
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Score must be 0 or 1"
 
-def test_update_score_invalid_below_range(mock_get_evaluation_components):
-    """Test score below valid range raises HTTPException."""
-    with pytest.raises(HTTPException) as exc_info:
-        update_score(evaluation_id="test-id", score=-2)
+@pytest.mark.parametrize("invalid_score", [-1.1, 1.1])
+def test_update_score_invalid_type_float(invalid_score):
+    """Test float scores get type validation error."""
+    response = client.post('/api/v1/scores', json={'evaluation_id': 'test-id', 'score': invalid_score})
     
-    assert exc_info.value.status_code == 400
-    assert exc_info.value.detail == "Score must be a float between -1 and 1"
+    assert response.status_code == 422 
 
 def test_list_scores(mocker):
     """Test listing scores returns the mocked scores dictionary."""
-    mock_scores = {
-        'llm': {
-            "llama3.2": 0.0540540540540541
-        }
-    }
+    mock_scores = {'llm': {"llama3.2": 0.054}}
     mocker.patch("app.web.endpoints.score_views.get_scores", return_value=mock_scores)
 
-    response = list_scores()
-
-    assert response == mock_scores
+    response = client.get('/api/v1/scores')
+    
+    assert response.status_code == 200
+    assert response.json() == mock_scores
+    
 
 def test_list_scores_empty(mocker):
     """Test list_scores returns empty dict when no scores exist."""
-    mocker.patch("app.web.endpoints.score_views.get_scores", return_value={})
+    mock_scores = {}
+    mocker.patch("app.web.endpoints.score_views.get_scores", return_value=mock_scores)
+
+    response = client.get('/api/v1/scores')
     
-    response = list_scores()
-    assert response == {}
+    assert response.status_code == 200
+    assert response.json() == mock_scores

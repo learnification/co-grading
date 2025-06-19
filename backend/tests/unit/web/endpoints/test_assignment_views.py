@@ -61,6 +61,7 @@ def valid_payload():
     }
 
 def test_successful_request(mocker, valid_payload):
+    """Test successful task scheduling with valid payload."""
     mock_delay = mocker.patch.object(schedule_evaluation, "delay", return_value=mocker.Mock(id="task_123"))
     response = client.post("/api/v1/grading/generate", json=valid_payload)
     assert response.status_code == 200
@@ -68,6 +69,7 @@ def test_successful_request(mocker, valid_payload):
     mock_delay.assert_called_once()
 
 def test_model_dump(mocker, valid_payload):
+    """Test payload transformation into the expected format."""
     mock_delay = mocker.patch.object(schedule_evaluation, "delay", return_value=mocker.Mock(id="task_123"))
     client.post("/api/v1/grading/generate", json=valid_payload)
     call_args = mock_delay.call_args[0][0]
@@ -83,6 +85,7 @@ def test_model_dump(mocker, valid_payload):
     {'course': None,'assignment': None, 'submissions': None, 'settings': None}
 ])
 def test_invalid_payload(mocker, invalid_payload):
+    """Test validation errors for invalid payload structures."""
     mock_delay = mocker.patch.object(schedule_evaluation, "delay")
     
     response = client.post("/api/v1/grading/generate", json=invalid_payload)
@@ -90,6 +93,7 @@ def test_invalid_payload(mocker, invalid_payload):
     mock_delay.assert_not_called()
 
 def test_invalid_content_type(mocker):
+    """Test handling of invalid content type in the request."""
     mock_delay = mocker.patch.object(schedule_evaluation, "delay")
     
     response = client.post("/api/v1/grading/generate", data="not json")
@@ -98,6 +102,7 @@ def test_invalid_content_type(mocker):
 
 @pytest.mark.parametrize("missing_field", ["course", "assignment", "submissions", "settings"])
 def test_missing_required_field(mocker, valid_payload, missing_field):
+    """Test validation errors for missing required fields."""
     mock_delay = mocker.patch.object(schedule_evaluation, "delay")
     payload = valid_payload.copy()
     del payload[missing_field]
@@ -109,6 +114,7 @@ def test_missing_required_field(mocker, valid_payload, missing_field):
     mock_delay.assert_not_called()
 
 def test_invalid_strictness(mocker, valid_payload):
+    """Test validation error for invalid strictness value."""
     mock_delay = mocker.patch.object(schedule_evaluation, "delay")
     payload = valid_payload.copy()
     payload["settings"]["strictness"] = "invalid"
@@ -131,6 +137,7 @@ def test_invalid_strictness(mocker, valid_payload):
     ],
 )
 def test_task_status(mocker, status, expected_status, expected_result, expected_traceback):
+    """Test task status endpoint returns expected data."""
     mock_task = mocker.Mock()
     mock_task.status = status
     mock_task.result = {"score": 100} if status == "SUCCESS" else None

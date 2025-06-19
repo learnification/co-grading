@@ -170,3 +170,6 @@ logs/
 db.sqlite
 dump.rdb
 vector_database
+
+# Local Sandbox
+.sandbox

@@ -36,7 +36,7 @@ def random_component(component_type, component_map: dict):
             return name
 
 
-def score_evalutaion(score: int, llm: str) -> None:
+def score_evaluation(score: int, llm: str) -> None:
     score = min(max(score, 0), 1)
 
     client.hincrby("llm_score_values", llm, score)

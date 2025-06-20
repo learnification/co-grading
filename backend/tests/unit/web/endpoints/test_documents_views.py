@@ -46,3 +46,7 @@ def test_upload_success(mocker):
     mock_makedirs.assert_called_once_with('downloads/resources', exist_ok=True)
     mock_open.assert_called_once_with(f'downloads/resources/{expected_uuid}.pdf', 'wb')
     mock_open().write.assert_called_once_with(pdf_content)
+
+def test_upload_missing_file():
+    response = client.post('/api/v1/documents/upload', files={})
+    assert response.status_code == 422

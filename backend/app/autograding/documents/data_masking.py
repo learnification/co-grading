@@ -209,7 +209,7 @@ class PIIDetector:
         masked_text = text
         for item in sorted(detected_pii, key=lambda x: x["start"], reverse=True):
             start, end = item["start"], item["end"]
-            if item["entity_type"] == "PER" or item["entity_type"] == "PERSON":
+            if item["entity_type"] == "PER":
                 # For names, replace with random choice from MASKING_NAMES
                 original_name = item["text"]
                 if original_name not in self.replacement_map:
@@ -223,5 +223,5 @@ class PIIDetector:
                 # General masking for PII types like SSN, email, etc.
                 masked_text = masked_text[:start] + mask_char * (end - start) + masked_text[end:]
 
-        return masked_text
-        # return masked_text, detected_pii
+        #return masked_text
+        return masked_text, detected_pii

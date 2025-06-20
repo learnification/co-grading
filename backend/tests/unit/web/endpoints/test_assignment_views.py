@@ -96,7 +96,11 @@ def test_invalid_content_type(mocker):
     """Test handling of invalid content type in the request."""
     mock_delay = mocker.patch.object(schedule_evaluation, "delay")
     
-    response = client.post("/api/v1/grading/generate", data="not json")
+    response = client.post(
+        "/api/v1/grading/generate", 
+        data={"invalid": "data"},
+        headers={"Content-Type": "application/x-www-form-urlencoded"}
+    )
     assert response.status_code == 422
     mock_delay.assert_not_called()
 
@@ -123,6 +127,34 @@ def test_invalid_strictness(mocker, valid_payload):
     assert response.json()["detail"][0]["loc"] == ["body", "settings", "strictness"]
     assert response.json()["detail"][0]["type"] == "enum"
     mock_delay.assert_not_called()
+
+def test_empty_submissions_list(mocker, valid_payload):
+    """Test that empty submissions list is valid and handled correctly."""
+    mock_delay = mocker.patch.object(schedule_evaluation, "delay", return_value=mocker.Mock(id="task_123"))
+    payload = valid_payload.copy()
+    payload["submissions"] = []
+    response = client.post("/api/v1/grading/generate", json=payload)
+    assert response.status_code == 200
+    assert response.json() == {"task_id": "task_123"}
+    mock_delay.assert_called_once()
+
+def test_document_id_optional_field(mocker, valid_payload):
+    """Test that document_id is optional and handled correctly."""
+    mock_delay = mocker.patch.object(schedule_evaluation, "delay", return_value=mocker.Mock(id="task_123"))
+    
+    # Test without document_id
+    response = client.post("/api/v1/grading/generate", json=valid_payload)
+    assert response.status_code == 200
+    
+    # Test with document_id
+    payload_with_doc = valid_payload.copy()
+    payload_with_doc["documentId"] = "test-doc-123"
+    response = client.post("/api/v1/grading/generate", json=payload_with_doc)
+    assert response.status_code == 200
+    
+    # Verify document_id is passed to the task
+    call_args = mock_delay.call_args_list[1][0][0]
+    assert call_args["documentId"] == "test-doc-123"
 
 ##### @router.get("/status/{task_id}", response_model=dict) tests
 

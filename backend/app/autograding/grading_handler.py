@@ -28,7 +28,6 @@ def generate_feedback(request: RequestGradingDto, task_id: str) -> dict:
         grading_args.pdf_path = f"downloads/resources/{request.document_id}.pdf"
     
     guideline = generate_guideline(grading_args)
-
     llm_name = get_evaluation_components(task_id).llm
     feedbacks = {}
     

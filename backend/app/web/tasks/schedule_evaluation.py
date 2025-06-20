@@ -13,7 +13,6 @@ def schedule_evaluation(self, request_data: dict):
     try:
         request = RequestGradingDto.model_validate(request_data)
         feedbacks = generate_feedback(request,self.request.id)
-        logger.debug(f'genereate_feedback: {feedbacks}')
         return feedbacks
     except Exception as e:
         logger.error(f"Error scheduling evaluations with aggregation: {e}")

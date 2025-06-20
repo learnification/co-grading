@@ -14,7 +14,7 @@ def generate_grading_feedback(request: RequestGradingDto):
     Enqueue a grading and feedback generation task.
     Returns a task_id to track the task status and retrieve results.
     """
-    logger.info(f"Received grading request for assignment {request.model_dump(by_alias=True)}")
+    logger.info(f"Received grading request for assignment {request}")
     request_data = request.model_dump(by_alias=True)
     # Enqueue the Celery task
     task = schedule_evaluation.delay(request_data)

@@ -224,4 +224,4 @@ class PIIDetector:
                 masked_text = masked_text[:start] + mask_char * (end - start) + masked_text[end:]
 
         return masked_text
-        #return masked_text, detected_pii
+        # return masked_text, detected_pii

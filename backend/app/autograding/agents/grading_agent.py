@@ -4,6 +4,7 @@ from app.web.utils.logger import logger
 from langchain_ollama import ChatOllama
 from app.autograding.llms import llm_map
 
+
 def build_evaluation(
     instruction: str,
     submission: Submission,

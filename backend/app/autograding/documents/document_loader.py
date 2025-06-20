@@ -5,7 +5,6 @@ from pathlib import Path
 from langchain_community.document_loaders import PyPDFLoader, TextLoader
 from app.autograding.documents.data_masking import PIIDetector
 import fitz  # PyMuPDF
-from app.web.utils.logger import logger
 
 
 def download_file(
@@ -122,8 +121,7 @@ def mask_pdf_in_place(pdf_path: str) -> None:
             for block in blocks:
                 x0, y0, x1, y1, text, _, _ = block
                 if text.strip():
-                    masked_text, piid = detector.mask_text(text)
-                    logger.debug(f"#### Piid found: {piid}")
+                    masked_text = detector.mask_text(text)
                     page.add_redact_annot((x0, y0, x1, y1), text=masked_text)
             page.apply_redactions()
 
@@ -156,8 +154,7 @@ def mask_txt_in_place(txt_path: str) -> None:
         original_content = txt_file.read_text(encoding="utf-8")
         
         # Apply masking
-        masked_content, piid = detector.mask_text(original_content)
-        logger.debug(f"#### Piid found: {piid}")
+        masked_content = detector.mask_text(original_content)
         
         # Create temporary file path
         temp_file = txt_file.with_suffix(".tmp")

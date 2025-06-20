@@ -57,7 +57,6 @@ def search_knowledge_base(
 
             # Invoke the LLM to get the response
             llm_response = llm.invoke(formatted_prompt)
-            logger.debug(f'VECTOR STRORE: {llm_response}')
 
             # Extract the content from the LLM response
             answer: Optional[str] = getattr(llm_response, "content", None)

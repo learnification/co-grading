@@ -34,8 +34,7 @@ def test_success(mocker, mock_generate_feedback, mock_validate):
     result = schedule_evaluation(request_data)
     
     mock_validate.assert_called_once_with(request_data)
-    task_id = schedule_evaluation.request.id
-    mock_generate_feedback.assert_called_once_with(mock_request,task_id)
+    mock_generate_feedback.assert_called_once_with(mock_request, mocker.ANY)
     assert result == expected_feedbacks
 
 

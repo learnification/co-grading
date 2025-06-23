@@ -12,6 +12,10 @@ SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 
 
 def create_db_and_tables():
+    print(">>> Creating tables")
+    print(">>> DB_URI: ", config.DB_URI)
+    print(">>> engine: ", engine)
+    print(">>> config: ", config)
     SQLModel.metadata.create_all(engine)
 
 

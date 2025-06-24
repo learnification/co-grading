@@ -1,0 +1,13 @@
+name: List Ollama Processes
+
+on:
+  workflow_dispatch:
+
+jobs:
+  check-ollama:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check All Ollama Processes
+        run: |
+          echo "Listing all processes related to 'ollama':"
+          ps aux | grep ollama || echo "No Ollama processes running"

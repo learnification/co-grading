@@ -44,10 +44,10 @@ End-to-end tests that verify the complete system works together:
 
 1. **Python Environment**: Ensure you're in the correct virtual environment
 2. **Dependencies**: Install test dependencies with `pip install -r requirements.txt`
-3. **Redis**: Redis server must be running for Celery
-   > Check: redis-cli ping
+3. **Redis**: Redis server must be running for Celery (`redis-cli ping`)
 4. **Database**: SQLite database will be created automatically for tests
-5. **Ollama**: For integration tests, ensure Ollama is running locally with your preferred LLM models
+5. **Ollama** (for local testing): Ensure Ollama is running locally with correct models
+
 
 ### Unit Tests
 
@@ -55,8 +55,8 @@ End-to-end tests that verify the complete system works together:
 # Run only unit tests
 python -m pytest tests/unit
 
-# Run with verbose output
-python -m pytest tests/unit -v
+# Run with verbose output and coverage
+python -m pytest tests/unit -v --cov=app --cov-report=term-missing
 
 # Run with print statement output
 python -m pytest tests/unit -s
@@ -70,37 +70,83 @@ python -m pytest tests/unit/web/test_api.py::test_set_evaluation_components
 
 ### Integration Tests
 
-1. Terminal 1: Start the test Celery Worker
+The application supports two testing modes:
+
+#### Local Testing (Recommended for Development)
+
+**Setup:**
 
 ```bash
-inv testworker
+# Start Redis (macOS, homebrew)
+brew services start redis
+
+# Start Redis (linux)
+sudo systemctl start redis-server.service
+
+# Ensure Redis is running
+redis-cli ping
+
+# Start Ollama service
+ollama serve
+
+# Download the models
+ollama pull llama3.2
+ollama pull llama3.2:3b-instruct-fp16
 ```
 
-2. Terminal 2: Run Tests
+**Run Tests:**
 
 ```bash
-# Run all integration tests (Need Local LLM Setup)
-inv slow-integration-tests
+# Terminal 1: Start test celery worker
+invoke testworker
+
+# Terminal 2: Run integration tests
+invoke slow_integration_tests
 ```
 
-> **Note**: For Integration tests, you must have Ollama running locally with your preferred LLM models.
+**Benefits:**
+
+- ✅ No cloud API usage
+- ✅ Faster response times
+- ✅ No daily request limits
+- ✅ Works offline
+
+#### Testing using API (Mainly for CI/CD)
+
+**Setup:**
+
+1. Set `OPENROUTER_API_KEY` = to your API key for `llama-3.3-70b-instruct:free` model in `.env`
+
+2. Ensure Redis is running
+```bash
+redis-cli ping
+```
+
+**Run Tests:**
+
+```bash
+# Terminal 1: Start test celery worker
+TEST_LLM_TYPE=cloud invoke testworker
+
+# Terminal 2: Run integration tests
+TEST_LLM_TYPE=cloud invoke slow_integration_tests
+```
+
+**Benefits:**
+
+- ✅ Consistent with CI/CD environment
+- ✅ No local setup required
+- ⚠️ Consumes daily API quota
 
 ## Best Practices
-
-### Writing Tests
-
-1. **Test Independence**: Each test should be able to run in isolation
-2. **Clear Naming**: Test names should describe what they're testing
-3. **Arrange-Act-Assert**: Structure tests with clear sections
-4. **Mock External Dependencies**: Unit tests should not make real API calls
-5. **Realistic Test Data**: Use data that matches production scenarios
 
 ### Running Tests
 
 1. **Run Unit Tests First**: Unit tests are fast and catch most issues
-2. **Check Integration Tests**: Run integration tests before deployment
-3. **Monitor Test Output**: Use `-v -s` for detailed output during debugging
-4. **Use Specific Commands**: Run specific test files or functions for focused testing
+2. **Use Local Testing for Development**
+3. **Check Integration Tests**
+4. **Monitor Test Output**: Use `-v -s` for detailed output during debugging
+5. **Use Specific Commands**: Run specific test files or functions for focused testing
 
 ### Debugging Tests
 
@@ -127,19 +173,22 @@ inv slow-integration-tests
    Solution: Ensure Redis is running and accessible
    ```
 
-3. **LLM Connection Issues**
+3. **LLM Connection Issues (Local)**
 
    ```
    Error: LLM service not available
-   Solution: Ensure Ollama is running for integration tests
+   Solution: Ensure Ollama is running for local integration tests
    ```
 
-## Contributing
+4. **LLM Connection Issues (Cloud)**
 
-When adding new tests:
+   ```
+   Error: OPENROUTER_API_KEY not set
+   Solution: Set OPENROUTER_API_KEY environment variable for cloud testing
+   ```
 
-1. **Follow Naming Conventions**: Use descriptive test names
-2. **Add Appropriate Markers**: Mark tests as `@pytest.mark.slow` if they take time
-3. **Update This README**: Document any new test categories or requirements
-4. **Ensure Independence**: Tests should not depend on each other
-5. **Add Documentation**: Include docstrings explaining what each test verifies
+5. **Wrong LLM Mode**
+   ```
+   Error: Unexpected LLM behavior
+   Solution: Check TEST_LLM_TYPE environment variable (local vs cloud)
+   ```

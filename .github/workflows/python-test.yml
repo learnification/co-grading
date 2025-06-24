@@ -1,14 +1,15 @@
 # This workflow will install Python dependencies, run tests and lint with a single version of Python
 # For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
 
-name: Test and Lint on Push
-
+name: Test and Lint Code
 on:
   push:
-    branches: ["10-backend---create-unitintegration-tests-for-web"]
+    branches:
+      - main
   pull_request:
-    branches: ["10-backend---create-unitintegration-tests-for-web"]
-  workflow_dispatch: # Keep for manual triggering
+    branches:
+      - main
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -17,23 +18,38 @@ jobs:
   test-and-lint:
     runs-on: ubuntu-latest
 
+    services:
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - uses: actions/checkout@v4
-
+      
       - name: Set up Python 3.12
         uses: actions/setup-python@v3
         with:
           python-version: "3.12"
 
+      - name: Cache pip dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install flake8 pytest pytest-cov
-          if [ -f backend/requirements.txt ]; then 
-            pip install -r backend/requirements.txt
-          elif [ -f requirements.txt ]; then 
-            pip install -r requirements.txt
-          fi
+          pip install -r backend/requirements.txt
 
       - name: Lint with flake8
         run: |
@@ -54,3 +70,20 @@ jobs:
           flags: unittests
           name: codecov-umbrella
           fail_ci_if_error: false
+
+      - name: Start Celery Worker (Background)
+        run: |
+          cd backend
+          invoke testworker &
+          sleep 5  # Give worker time to start
+        env:
+          TEST_LLM_TYPE: cloud
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+
+      - name: Run Slow Integration Tests
+        run: |
+          cd backend
+          invoke slow-integration-tests
+        env:
+          TEST_LLM_TYPE: cloud
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}

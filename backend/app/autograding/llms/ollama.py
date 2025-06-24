@@ -2,6 +2,7 @@ import os
 import instructor
 from langchain_ollama import ChatOllama
 from langchain_openai import ChatOpenAI
+from langchain_openai import ChatOpenAI
 from openai import OpenAI
 
 

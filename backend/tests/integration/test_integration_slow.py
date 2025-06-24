@@ -84,6 +84,7 @@ def verify_components_stored(task_id):
     """Verify that components are properly stored in the database."""
     from app.web.api import get_evaluation_components
     components = get_evaluation_components(task_id)
+    print(f"LLM Used: {components.llm}")
     assert components is not None, "Components should be stored in database"
     assert components.llm is not None, "LLM should be stored in database"
     assert len(components.llm) > 0, "LLM name should not be empty"

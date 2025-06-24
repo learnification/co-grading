@@ -2,7 +2,7 @@ from app.autograding.processors import ProcessorFactory
 from app.web.db.models import Submission, GradingFeedback, CustomSettings
 from app.web.utils.logger import logger
 from langchain_ollama import ChatOllama
-
+from app.autograding.llms import llm_map
 
 def build_evaluation(
     instruction: str,
@@ -25,7 +25,8 @@ def build_evaluation(
     Returns:
         GradingFeedback: The generated grading feedback.
     """
-    llm = ChatOllama(model=llm_name).with_structured_output(GradingFeedback)
+    llm_builder = llm_map[llm_name]
+    llm = llm_builder(streaming=False).with_structured_output(GradingFeedback)
 
     # Build the instruction content
     instruction_content = f"""

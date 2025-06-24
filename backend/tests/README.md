@@ -48,7 +48,6 @@ End-to-end tests that verify the complete system works together:
 4. **Database**: SQLite database will be created automatically for tests
 5. **Ollama** (for local testing): Ensure Ollama is running locally with correct models
 
-
 ### Unit Tests
 
 ```bash
@@ -101,7 +100,7 @@ ollama pull llama3.2:3b-instruct-fp16
 invoke testworker
 
 # Terminal 2: Run integration tests
-invoke slow_integration_tests
+invoke slow-integration-tests
 ```
 
 **Benefits:**
@@ -118,6 +117,7 @@ invoke slow_integration_tests
 1. Set `OPENROUTER_API_KEY` = to your API key for `llama-3.3-70b-instruct:free` model in `.env`
 
 2. Ensure Redis is running
+
 ```bash
 redis-cli ping
 ```
@@ -129,7 +129,7 @@ redis-cli ping
 TEST_LLM_TYPE=cloud invoke testworker
 
 # Terminal 2: Run integration tests
-TEST_LLM_TYPE=cloud invoke slow_integration_tests
+TEST_LLM_TYPE=cloud invoke slow-integration-tests
 ```
 
 **Benefits:**

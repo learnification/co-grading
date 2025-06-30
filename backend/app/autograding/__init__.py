@@ -1,1 +1,1 @@
-from .score import score_evalutaion, get_scores
+from .score import score_evaluation, get_scores

@@ -168,5 +168,9 @@ logs/
 .DS_Store
 
 db.sqlite
+test.sqlite
 dump.rdb
 vector_database
+
+# Local Sandbox
+.sandbox

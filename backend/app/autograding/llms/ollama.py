@@ -11,10 +11,13 @@ def build_llm(streaming: bool, model: str):
 
 def build_openrouter_llm(streaming: bool = False):
     """Build an OpenRouter LLM using the free Llama 3.3 70B model."""
+    api_key = os.getenv("OPENROUTER_API_KEY")
+    if not api_key:
+        raise ValueError("OPENROUTER_API_KEY environment variable is required for testing")
     return ChatOpenAI(
         model="meta-llama/llama-3.3-70b-instruct:free",
         base_url="https://openrouter.ai/api/v1",
-        api_key=os.getenv("OPENROUTER_API_KEY"),
+        api_key=api_key,
         temperature=0.1,
         max_retries=3,
     )

@@ -26,8 +26,9 @@ def build_evaluation(
     Returns:
         GradingFeedback: The generated grading feedback.
     """
-    llm = ChatOllama(model=llm_name).with_structured_output(GradingFeedback)
-    #llm = llm_map[llm_name](streaming=False).with_structured_output(GradingFeedback)
+    llm_builder = llm_map[llm_name]
+    llm = llm_builder(streaming=False).with_structured_output(GradingFeedback)
+
     # Build the instruction content
     instruction_content = f"""
     You are an expert teacher who will grade a student's assignment.

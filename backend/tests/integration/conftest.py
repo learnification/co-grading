@@ -223,11 +223,3 @@ def multiple_submissions_request(base_grading_request, pdf_submission, text_subm
     request = base_grading_request.copy()
     request["submissions"] = [pdf_submission, text_submission]
     return request
-
-
-@pytest.fixture(scope='session')
-def realistic_grading_request(base_grading_request, pdf_submission, text_submission):
-    """Original realistic grading request with multiple submissions (for backward compatibility)."""
-    request = base_grading_request.copy()
-    request["submissions"] = [pdf_submission, text_submission]
-    return request

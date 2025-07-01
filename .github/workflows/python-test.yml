@@ -54,26 +54,24 @@ jobs:
       - name: Lint with flake8
         run: |
           # stop the build if there are Python syntax errors or undefined names
-          flake8 backend/ --count --select=E9,F63,F7,F82 --show-source --statistics
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
           # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
-          flake8 backend/ --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+          flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
 
       - name: Test with pytest
         run: |
-          cd backend
           python -m pytest tests/unit/ -v --cov=app --cov-report=term-missing --cov-report=xml
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
         with:
-          file: ./backend/coverage.xml
+          file: ./coverage.xml
           flags: unittests
           name: codecov-umbrella
           fail_ci_if_error: false
 
       - name: Start Celery Worker (Background)
         run: |
-          cd backend
           invoke testworker &
           sleep 5  # Give worker time to start
         env:
@@ -82,7 +80,6 @@ jobs:
 
       - name: Run Slow Integration Tests
         run: |
-          cd backend
           invoke slow-integration-tests
         env:
           TEST_LLM_TYPE: cloud

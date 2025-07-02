@@ -65,9 +65,9 @@ jobs:
       - name: Extract coverage section
         id: read_coverage
         run: |
-          echo 'content<<EOF' >> $GITHUB_OUTPUT
+          echo content<<EOF >> $GITHUB_OUTPUT
           sed -n '/^Name[ ]\+Stmts/,/^TOTAL/' coverage.txt >> $GITHUB_OUTPUT
-          echo 'EOF' >> $GITHUB_OUTPUT
+          echo EOF >> $GITHUB_OUTPUT
 
       - name: Comment coverage report
         uses: peter-evans/create-or-update-comment@v4

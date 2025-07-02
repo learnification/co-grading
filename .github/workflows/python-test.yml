@@ -60,16 +60,22 @@ jobs:
 
       - name: Test with pytest
         run: |
-          python -m pytest tests/unit/ -v --cov=app --cov-report=term-missing > coverage.txt
+          set -o pipefail
+          python -m pytest tests/unit/ -v \
+            --cov=app --cov-report=term-missing \
+            | tee coverage.txt
 
       - name: Extract coverage section
         id: read_coverage
         run: |
-          echo content<<EOF >> $GITHUB_OUTPUT
-          sed -n '/^Name[ ]\+Stmts/,/^TOTAL/' coverage.txt >> $GITHUB_OUTPUT
-          echo EOF >> $GITHUB_OUTPUT
+          {
+            echo 'content<<EOF'
+            sed -n '/^Name[ ]\+Stmts/,/^TOTAL/' coverage.txt
+            echo 'EOF'
+          } >> $GITHUB_OUTPUT
 
       - name: Comment coverage report
+        if: github.event_name == 'pull_request'
         uses: peter-evans/create-or-update-comment@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}

@@ -31,7 +31,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Set up Python 3.12
         uses: actions/setup-python@v3
         with:
@@ -60,15 +60,25 @@ jobs:
 
       - name: Test with pytest
         run: |
-          python -m pytest tests/unit/ -v --cov=app --cov-report=term-missing --cov-report=xml
+          python -m pytest tests/unit/ -v --cov=app --cov-report=term-missing > coverage.txt
 
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v3
+      - name: Extract coverage section
+        id: read_coverage
+        run: |
+          echo 'content<<EOF' >> $GITHUB_OUTPUT
+          sed -n '/^Name[ ]\+Stmts/,/^TOTAL/' coverage.txt >> $GITHUB_OUTPUT
+          echo 'EOF' >> $GITHUB_OUTPUT
+
+      - name: Comment coverage report
+        uses: peter-evans/create-or-update-comment@v4
         with:
-          file: ./coverage.xml
-          flags: unittests
-          name: codecov-umbrella
-          fail_ci_if_error: false
+          token: ${{ secrets.GITHUB_TOKEN }}
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            **Unit Test Coverage Report**
+            ```
+            ${{ steps.read_coverage.outputs.content }}
+            ```
 
       - name: Start Celery Worker (Background)
         run: |

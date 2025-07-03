@@ -18,9 +18,7 @@ def get_vectorstore(grading_args: GradingArgs) -> Optional[Chroma]:
         documents = pdf_loader.load_and_split()
 
         # Split documents into manageable chunks
-        text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=1024, chunk_overlap=64
-        )
+        text_splitter = RecursiveCharacterTextSplitter(chunk_size=1024, chunk_overlap=64)
         texts = text_splitter.split_documents(documents)
 
         # Define the directory to persist the vector store

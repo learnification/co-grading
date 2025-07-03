@@ -1,4 +1,4 @@
-from fastapi import Header, HTTPException, status
+from fastapi import Header
 
 
 def get_auth(x_auth: str = Header(None)) -> str:

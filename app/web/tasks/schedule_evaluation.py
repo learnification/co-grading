@@ -12,7 +12,7 @@ from app.autograding.grading_handler import generate_feedback
 def schedule_evaluation(self, request_data: dict):
     try:
         request = RequestGradingDto.model_validate(request_data)
-        feedbacks = generate_feedback(request,self.request.id)
+        feedbacks = generate_feedback(request, self.request.id)
         return feedbacks
     except Exception as e:
         logger.error(f"Error scheduling evaluations with aggregation: {e}")

@@ -1,7 +1,7 @@
 from datetime import datetime
 from enum import Enum
 from typing import List, Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 
 class Course(BaseModel):
@@ -51,16 +51,19 @@ class SubmissionType(str, Enum):
     online_quiz = "online_quiz"
     media_recording = "media_recording"
 
+
 class RubricRating(BaseModel):
     id: str
     description: Optional[str] = None
     long_description: Optional[str] = None
     points: int
 
+
 class RubricCriterion(BaseModel):
     """
     Schema representing criterion for a Rubric
     """
+
     id: str
     description: Optional[str] = None
     long_description: Optional[str] = None
@@ -98,8 +101,7 @@ class Assignment(BaseModel):
     needs_grading_count: Optional[int] = None
     rubric: List[RubricCriterion]
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class Submission(BaseModel):
@@ -126,8 +128,7 @@ class Submission(BaseModel):
     preview_url: str
     attachments: Optional[List["Attachment"]] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class Attachment(BaseModel):
@@ -146,5 +147,4 @@ class Attachment(BaseModel):
     mime_class: str
     preview_url: Optional[str] = None
 
-    class Config:
-        populate_by_name = True
+    model_config = ConfigDict(populate_by_name=True)

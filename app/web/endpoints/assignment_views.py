@@ -31,8 +31,6 @@ def get_task_status(task_id: str):
         "task_id": task_id,
         "status": task_result.status if task_result.status != "RETRY" else "STARTED",
         "result": task_result.result if task_result.status == "SUCCESS" else None,
-        "traceback": (
-            "Failed to generate feedback." if task_result.status == "FAILURE" else None
-        ),
+        "traceback": ("Failed to generate feedback." if task_result.status == "FAILURE" else None),
     }
     return response

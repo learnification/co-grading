@@ -1,7 +1,6 @@
 from app.autograding.processors import ProcessorFactory
 from app.web.db.models import Submission, GradingFeedback, CustomSettings
 from app.web.utils.logger import logger
-from langchain_ollama import ChatOllama
 from app.autograding.llms import llm_map
 
 
@@ -60,9 +59,7 @@ def build_evaluation(
         response: GradingFeedback = llm.invoke(messages)
 
         if max_score is not None and response.score > max_score:
-            raise ValueError(
-                f"Score {response.score} exceeds the maximum score of {max_score}"
-            )
+            raise ValueError(f"Score {response.score} exceeds the maximum score of {max_score}")
 
         response.submission_id = submission.id
         return response

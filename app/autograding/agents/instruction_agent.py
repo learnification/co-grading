@@ -1,12 +1,12 @@
-from typing import Dict, List, Optional, Tuple
+from typing import List, Optional, Tuple
 from langchain_core.prompts import PromptTemplate
 from langchain_ollama import ChatOllama
 from app.autograding.llms import llm_map
 from app.autograding.models import GradingArgs
-from app.web.api import get_evaluation_components
 from app.web.db.models import Assignment, RubricCriterion
 from app.web.utils import logger
 import re
+
 
 def format_rubric(rubric: List[RubricCriterion]) -> str:
     lines = []
@@ -40,8 +40,8 @@ def generate_queries(
     """
     prompt_template = """
     Role:
-    You are a teacher preparing to create a grading guideline for an assignment. 
-    To ensure you fully understand the assignment and can grade it effectively, 
+    You are a teacher preparing to create a grading guideline for an assignment.
+    To ensure you fully understand the assignment and can grade it effectively,
     you need to generate a list of specific search queries to deepen your knowledge of the assignment's content.
 
     Assignment Description:
@@ -106,7 +106,7 @@ def build_instruction(
     """
 
     input_text = f"""
-        Use Chain of Thought reasoning to create a detailed guideline for grading the assignment. 
+        Use Chain of Thought reasoning to create a detailed guideline for grading the assignment.
         Ensure your reasoning and guideline are clear\n\n.
         Assignment: ```{assignment.name}```\n"
         Description: ```{assignment.description}```"
@@ -134,7 +134,7 @@ def generate_instruction(
     llm_name: str,
 ) -> str:
     input_text = f"""
-        Use Chain of Thought reasoning to create a detailed guideline for grading the assignment. 
+        Use Chain of Thought reasoning to create a detailed guideline for grading the assignment.
         Ensure your reasoning and guideline are clear\n\n.
         State the key points to consider when grading the assignment.
         Do not include any introductory or concluding sentences.
@@ -150,9 +150,7 @@ def generate_instruction(
         \n{format_rubric(grading_args.assignment.rubric)}"""
 
     if retrieved_documents:
-        input_text += (
-            "\n\nBelow are the key points to consider when grading the assignment:\n"
-        )
+        input_text += "\n\nBelow are the key points to consider when grading the assignment:\n"
         for query, doc in retrieved_documents:
             input_text += f"\n\nQuery: {query}\nAdvice: {doc}"
 

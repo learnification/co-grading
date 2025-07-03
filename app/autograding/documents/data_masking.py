@@ -18,7 +18,7 @@ import torch
 # Constants
 MASKING_NAMES = ["Alex", "Chris", "Taylor", "Jordan", "Morgan", "Jamie", "Casey", "Robin"]
 PII_TYPES = ["PER", "Email", "Phone_US", "SSN", "Bank_Account", "IPv4", "IPv6"]
-CONFIDENCE_THRESHOLD = 0.7    # Use transformers if spaCy confidence is below this
+CONFIDENCE_THRESHOLD = 0.7  # Use transformers if spaCy confidence is below this
 
 
 class PIIDetector:
@@ -29,7 +29,7 @@ class PIIDetector:
             load_transformers (bool): Flag to conditionally load transformers pipeline.
         """
         # Suppress specific warnings
-        warnings.filterwarnings('ignore')
+        warnings.filterwarnings("ignore")
 
         # Set up logging and initialize components
         logging.basicConfig(level=logging.ERROR)
@@ -67,7 +67,7 @@ class PIIDetector:
                     "token-classification",
                     model="dslim/bert-base-NER",
                     aggregation_strategy="simple",
-                    device=0 if torch.cuda.is_available() else -1
+                    device=0 if torch.cuda.is_available() else -1,
                 )
                 self.transformer_loaded = True
             except Exception as e:
@@ -77,18 +77,18 @@ class PIIDetector:
     def _initialize_patterns(self):
         """Compile regular expressions for detecting various types of PII patterns."""
         self.patterns = {
-            "SSN": r'\b\d{3}-\d{2}-\d{4}\b',
-            "Credit_Card": r'\b\d{4}(?:[-\s]?\d{4}){3}\b',
-            "Phone_US": r'\b(?:\+?1[-.\s]?)?\(?([0-9]{3})\)?[-.\s]?([0-9]{3})[-.\s]?([0-9]{4})\b',
-            "Email": r'\b[\w\.-]+@[\w\.-]+\.\w+\b',
-            "IPv4": r'\b(?:(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])\.){3}(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])\b',
-            "IPv6": r'\b([a-fA-F0-9]{1,4}:){7}[a-fA-F0-9]{1,4}\b|\b([a-fA-F0-9]{1,4}:){1,7}:|\b::(?:[a-fA-F0-9]{1,4}:){0,6}[a-fA-F0-9]{1,4}\b',
-            "Date": r'\b\d{4}[-/]\d{1,2}[-/]\d{1,2}\b|\b\d{1,2}[-/]\d{1,2}[-/]\d{4}\b',
-            "Passport_US": r'\b[A-Z]\d{8}\b',
-            "Bank_Account": r'\b\d{10,12}\b',
-            "Detailed_Address": r'\b\d+\s+[A-Za-z]+\s+(Street|St\.|Avenue|Ave\.|Road|Rd\.|Boulevard|Blvd\.|Drive|Dr\.|Lane|Ln\.|Court|Ct\.|Place|Pl\.|Square|Sq\.)(,?\s+[A-Z]{2})?\b',
-            "ZIP_Code": r'\b\d{5}(?:-\d{4})?\b',
-            "Canadian_Postal_Code": r'\b[A-Z]\d[A-Z]\s?\d[A-Z]\d\b'
+            "SSN": r"\b\d{3}-\d{2}-\d{4}\b",
+            "Credit_Card": r"\b\d{4}(?:[-\s]?\d{4}){3}\b",
+            "Phone_US": r"\b(?:\+?1[-.\s]?)?\(?([0-9]{3})\)?[-.\s]?([0-9]{3})[-.\s]?([0-9]{4})\b",
+            "Email": r"\b[\w\.-]+@[\w\.-]+\.\w+\b",
+            "IPv4": r"\b(?:(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])\.){3}(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])\b",
+            "IPv6": r"\b([a-fA-F0-9]{1,4}:){7}[a-fA-F0-9]{1,4}\b|\b([a-fA-F0-9]{1,4}:){1,7}:|\b::(?:[a-fA-F0-9]{1,4}:){0,6}[a-fA-F0-9]{1,4}\b",
+            "Date": r"\b\d{4}[-/]\d{1,2}[-/]\d{1,2}\b|\b\d{1,2}[-/]\d{1,2}[-/]\d{4}\b",
+            "Passport_US": r"\b[A-Z]\d{8}\b",
+            "Bank_Account": r"\b\d{10,12}\b",
+            "Detailed_Address": r"\b\d+\s+[A-Za-z]+\s+(Street|St\.|Avenue|Ave\.|Road|Rd\.|Boulevard|Blvd\.|Drive|Dr\.|Lane|Ln\.|Court|Ct\.|Place|Pl\.|Square|Sq\.)(,?\s+[A-Z]{2})?\b",
+            "ZIP_Code": r"\b\d{5}(?:-\d{4})?\b",
+            "Canadian_Postal_Code": r"\b[A-Z]\d[A-Z]\s?\d[A-Z]\d\b",
         }
         self.compiled_patterns = {name: re.compile(pattern) for name, pattern in self.patterns.items()}
 
@@ -122,15 +122,17 @@ class PIIDetector:
         results = []
         for name, pattern in self.compiled_patterns.items():
             for match in pattern.finditer(text):
-                results.append({
-                    "entity_type": name,
-                    "start": match.start(),
-                    "end": match.end(),
-                    "text": match.group(),
-                    "confidence": 1.0,
-                    "source": "regex",
-                    "confidence_score": 1.0
-                })
+                results.append(
+                    {
+                        "entity_type": name,
+                        "start": match.start(),
+                        "end": match.end(),
+                        "text": match.group(),
+                        "confidence": 1.0,
+                        "source": "regex",
+                        "confidence_score": 1.0,
+                    }
+                )
         return results
 
     def _detect_with_spacy(self, text: str) -> List[Dict]:
@@ -143,15 +145,18 @@ class PIIDetector:
             List[Dict]: List of detected PII entities identified by spaCy.
         """
         doc = self.nlp(text)
-        return [{
-            "entity_type": ent.label_,
-            "start": ent.start_char,
-            "end": ent.end_char,
-            "text": ent.text,
-            "confidence": 0.8,
-            "source": "spaCy",
-            "confidence_score": 0.8
-        } for ent in doc.ents]
+        return [
+            {
+                "entity_type": ent.label_,
+                "start": ent.start_char,
+                "end": ent.end_char,
+                "text": ent.text,
+                "confidence": 0.8,
+                "source": "spaCy",
+                "confidence_score": 0.8,
+            }
+            for ent in doc.ents
+        ]
 
     def _detect_with_transformers(self, text: str) -> List[Dict]:
         """Detect PII in text using transformers-based NER models.
@@ -165,15 +170,18 @@ class PIIDetector:
         if not self.transformer_loaded:
             self._initialize_transformers()
         results = self.ner_pipeline(text)
-        return [{
-            "entity_type": result["entity_group"],
-            "start": result["start"],
-            "end": result["end"],
-            "text": result["word"],
-            "confidence": float(result["score"]),
-            "source": "transformers",
-            "confidence_score": float(result["score"])
-        } for result in results]
+        return [
+            {
+                "entity_type": result["entity_group"],
+                "start": result["start"],
+                "end": result["end"],
+                "text": result["word"],
+                "confidence": float(result["score"]),
+                "source": "transformers",
+                "confidence_score": float(result["score"]),
+            }
+            for result in results
+        ]
 
     def _remove_overlapping_results(self, results: List[Dict]) -> List[Dict]:
         """Remove overlapping PII detection results based on confidence scores.
@@ -195,7 +203,7 @@ class PIIDetector:
                 filtered_results[-1] = current
         return filtered_results
 
-    def mask_text(self, text: str, mask_char: str = '*') -> str:
+    def mask_text(self, text: str, mask_char: str = "*") -> str:
         """Mask detected PII entities within the input text.
 
         Args:

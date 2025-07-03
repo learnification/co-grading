@@ -1,9 +1,11 @@
+import pytest
 from fastapi.testclient import TestClient
+
 from app.web import app
 from app.web.tasks.schedule_evaluation import schedule_evaluation
-import pytest
 
 client = TestClient(app=app)
+
 
 @pytest.fixture
 def valid_payload():
@@ -15,13 +17,7 @@ def valid_payload():
             "uuid": "uhwfeuiOIHib698bIBibyv",
             "course_code": "Sandbox",
             "created_at": "2023-02-21T22:59:13Z",
-            "enrollments": [
-                {
-                    "type": "teacher",
-                    "user_id": 271699,
-                    "enrollment_state": "active"
-                }
-            ]
+            "enrollments": [{"type": "teacher", "user_id": 271699, "enrollment_state": "active"}],
         },
         "assignment": {
             "id": 986784,
@@ -36,8 +32,43 @@ def valid_payload():
             "submissions_download_url": "https://canvas.sfu.ca/courses/1/assignments/986784/submissions?zip=1",
             "assignment_group_id": 203919,
             "submission_types": ["online_upload"],
-            'rubric': [{'id': '_9749', 'description': 'Correctness', 'long_description': '', 'points': 10, 'criterion_use_range': False, 'ratings': [{'id': 'blank', 'description': 'Full Marks', 'long_description': '', 'points': 10}, {'id': '_5987', 'description': 'Partial', 'long_description': '', 'points': 6}, {'id': 'blank_2', 'description': 'No Marks', 'long_description': '', 'points': 0}]}, {'id': '84367_3098', 'description': 'Spellings', 'long_description': '', 'points': 5, 'criterion_use_range': False, 'ratings': [{'id': '84367_9573', 'description': 'Full Marks', 'long_description': 'No Spelling Errors', 'points': 5}, {'id': '84367_3991', 'description': 'Partial', 'long_description': 'Few Spelling Errors', 'points': 3}, {'id': '84367_2501', 'description': 'No Marks', 'long_description': 'Several Spelling Errors', 'points': 0}]}], 
-            "has_submitted_submissions": True
+            "rubric": [
+                {
+                    "id": "_9749",
+                    "description": "Correctness",
+                    "long_description": "",
+                    "points": 10,
+                    "criterion_use_range": False,
+                    "ratings": [
+                        {"id": "blank", "description": "Full Marks", "long_description": "", "points": 10},
+                        {"id": "_5987", "description": "Partial", "long_description": "", "points": 6},
+                        {"id": "blank_2", "description": "No Marks", "long_description": "", "points": 0},
+                    ],
+                },
+                {
+                    "id": "84367_3098",
+                    "description": "Spellings",
+                    "long_description": "",
+                    "points": 5,
+                    "criterion_use_range": False,
+                    "ratings": [
+                        {
+                            "id": "84367_9573",
+                            "description": "Full Marks",
+                            "long_description": "No Spelling Errors",
+                            "points": 5,
+                        },
+                        {"id": "84367_3991", "description": "Partial", "long_description": "Few Spelling Errors", "points": 3},
+                        {
+                            "id": "84367_2501",
+                            "description": "No Marks",
+                            "long_description": "Several Spelling Errors",
+                            "points": 0,
+                        },
+                    ],
+                },
+            ],
+            "has_submitted_submissions": True,
         },
         "submissions": [
             {
@@ -49,16 +80,12 @@ def valid_payload():
                 "late": False,
                 "missing": False,
                 "preview_url": "",
-                "submission_type": "online_upload"
+                "submission_type": "online_upload",
             }
         ],
-        "settings": {
-            "strictness": "moderate",
-            "tone": "constructive",
-            "length": "medium",
-            "customFeedbackPrompt": ""
-        }
+        "settings": {"strictness": "moderate", "tone": "constructive", "length": "medium", "customFeedbackPrompt": ""},
     }
+
 
 def test_successful_request(mocker, valid_payload):
     """Test successful task scheduling with valid payload."""
@@ -67,6 +94,7 @@ def test_successful_request(mocker, valid_payload):
     assert response.status_code == 200
     assert response.json() == {"task_id": "task_123"}
     mock_delay.assert_called_once()
+
 
 def test_model_dump(mocker, valid_payload):
     """Test payload transformation into the expected format."""
@@ -78,31 +106,35 @@ def test_model_dump(mocker, valid_payload):
     assert call_args["settings"]["strictness"] == "moderate"
     assert call_args["submissions"][0]["id"] == valid_payload["submissions"][0]["id"]
 
-@pytest.mark.parametrize("invalid_payload", [
-    {"course": {"id": 123}},
-    {},
-    {"course": {"id": "not_a_number"}},
-    {'course': None,'assignment': None, 'submissions': None, 'settings': None}
-])
+
+@pytest.mark.parametrize(
+    "invalid_payload",
+    [
+        {"course": {"id": 123}},
+        {},
+        {"course": {"id": "not_a_number"}},
+        {"course": None, "assignment": None, "submissions": None, "settings": None},
+    ],
+)
 def test_invalid_payload(mocker, invalid_payload):
     """Test validation errors for invalid payload structures."""
     mock_delay = mocker.patch.object(schedule_evaluation, "delay")
-    
+
     response = client.post("/api/v1/grading/generate", json=invalid_payload)
     assert response.status_code == 422
     mock_delay.assert_not_called()
 
+
 def test_invalid_content_type(mocker):
     """Test handling of invalid content type in the request."""
     mock_delay = mocker.patch.object(schedule_evaluation, "delay")
-    
+
     response = client.post(
-        "/api/v1/grading/generate", 
-        data={"invalid": "data"},
-        headers={"Content-Type": "application/x-www-form-urlencoded"}
+        "/api/v1/grading/generate", data={"invalid": "data"}, headers={"Content-Type": "application/x-www-form-urlencoded"}
     )
     assert response.status_code == 422
     mock_delay.assert_not_called()
+
 
 @pytest.mark.parametrize("missing_field", ["course", "assignment", "submissions", "settings"])
 def test_missing_required_field(mocker, valid_payload, missing_field):
@@ -117,6 +149,7 @@ def test_missing_required_field(mocker, valid_payload, missing_field):
     assert response.json()["detail"][0]["type"] == "missing"
     mock_delay.assert_not_called()
 
+
 def test_invalid_strictness(mocker, valid_payload):
     """Test validation error for invalid strictness value."""
     mock_delay = mocker.patch.object(schedule_evaluation, "delay")
@@ -128,6 +161,7 @@ def test_invalid_strictness(mocker, valid_payload):
     assert response.json()["detail"][0]["type"] == "enum"
     mock_delay.assert_not_called()
 
+
 def test_empty_submissions_list(mocker, valid_payload):
     """Test that empty submissions list is valid and handled correctly."""
     mock_delay = mocker.patch.object(schedule_evaluation, "delay", return_value=mocker.Mock(id="task_123"))
@@ -138,25 +172,25 @@ def test_empty_submissions_list(mocker, valid_payload):
     assert response.json() == {"task_id": "task_123"}
     mock_delay.assert_called_once()
 
+
 def test_document_id_optional_field(mocker, valid_payload):
     """Test that document_id is optional and handled correctly."""
     mock_delay = mocker.patch.object(schedule_evaluation, "delay", return_value=mocker.Mock(id="task_123"))
-    
+
     # Test without document_id
     response = client.post("/api/v1/grading/generate", json=valid_payload)
     assert response.status_code == 200
-    
+
     # Test with document_id
     payload_with_doc = valid_payload.copy()
     payload_with_doc["documentId"] = "test-doc-123"
     response = client.post("/api/v1/grading/generate", json=payload_with_doc)
     assert response.status_code == 200
-    
+
     # Verify document_id is passed to the task
     call_args = mock_delay.call_args_list[1][0][0]
     assert call_args["documentId"] == "test-doc-123"
 
-##### @router.get("/status/{task_id}", response_model=dict) tests
 
 @pytest.mark.parametrize(
     "status, expected_status, expected_result, expected_traceback",

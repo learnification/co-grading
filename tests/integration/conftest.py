@@ -1,17 +1,15 @@
-import pytest
 import os
 import sys
 from pathlib import Path
+import redis
+import pytest
+from fastapi.testclient import TestClient
+from app.web import app
 
 # Add project root to Python path
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-import redis
-
-# Now import app modules that will use the test environment
-from fastapi.testclient import TestClient
-from app.web import app
 
 @pytest.fixture
 def test_client():
@@ -22,8 +20,8 @@ def test_client():
 @pytest.fixture(autouse=True)
 def flush_redis():
     """Automatically flush Redis before each test."""
-    redis_uri = os.getenv('REDIS_URI')
-    print(f'redis_uri: {redis_uri}')
+    redis_uri = os.getenv("REDIS_URI")
+    print(f"redis_uri: {redis_uri}")
     if redis_uri:
         client = redis.Redis.from_url(redis_uri)
         client.flushdb()
@@ -33,7 +31,7 @@ def flush_redis():
         yield
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope="session")
 def base_grading_request():
     """Base grading request without submissions."""
     return {
@@ -44,13 +42,7 @@ def base_grading_request():
             "uuid": "uhwfeuiOIHib698bIBibyv",
             "course_code": "Sandbox",
             "created_at": "2023-02-21T22:59:13Z",
-            "enrollments": [
-                {
-                    "type": "teacher",
-                    "user_id": 271699,
-                    "enrollment_state": "active"
-                }
-            ]
+            "enrollments": [{"type": "teacher", "user_id": 271699, "enrollment_state": "active"}],
         },
         "assignment": {
             "id": 986784,
@@ -65,19 +57,49 @@ def base_grading_request():
             "submissions_download_url": "https://canvas.sfu.ca/courses/1/assignments/986784/submissions?zip=1",
             "assignment_group_id": 203919,
             "submission_types": ["online_upload"],
-            'rubric': [{'id': '_9749', 'description': 'Correctness', 'long_description': '', 'points': 10, 'criterion_use_range': False, 'ratings': [{'id': 'blank', 'description': 'Full Marks', 'long_description': '', 'points': 10}, {'id': '_5987', 'description': 'Partial', 'long_description': '', 'points': 6}, {'id': 'blank_2', 'description': 'No Marks', 'long_description': '', 'points': 0}]}, {'id': '84367_3098', 'description': 'Spellings', 'long_description': '', 'points': 5, 'criterion_use_range': False, 'ratings': [{'id': '84367_9573', 'description': 'Full Marks', 'long_description': 'No Spelling Errors', 'points': 5}, {'id': '84367_3991', 'description': 'Partial', 'long_description': 'Few Spelling Errors', 'points': 3}, {'id': '84367_2501', 'description': 'No Marks', 'long_description': 'Several Spelling Errors', 'points': 0}]}], 
-            "has_submitted_submissions": True
+            "rubric": [
+                {
+                    "id": "_9749",
+                    "description": "Correctness",
+                    "long_description": "",
+                    "points": 10,
+                    "criterion_use_range": False,
+                    "ratings": [
+                        {"id": "blank", "description": "Full Marks", "long_description": "", "points": 10},
+                        {"id": "_5987", "description": "Partial", "long_description": "", "points": 6},
+                        {"id": "blank_2", "description": "No Marks", "long_description": "", "points": 0},
+                    ],
+                },
+                {
+                    "id": "84367_3098",
+                    "description": "Spellings",
+                    "long_description": "",
+                    "points": 5,
+                    "criterion_use_range": False,
+                    "ratings": [
+                        {
+                            "id": "84367_9573",
+                            "description": "Full Marks",
+                            "long_description": "No Spelling Errors",
+                            "points": 5,
+                        },
+                        {"id": "84367_3991", "description": "Partial", "long_description": "Few Spelling Errors", "points": 3},
+                        {
+                            "id": "84367_2501",
+                            "description": "No Marks",
+                            "long_description": "Several Spelling Errors",
+                            "points": 0,
+                        },
+                    ],
+                },
+            ],
+            "has_submitted_submissions": True,
         },
-        "settings": {
-            "strictness": "moderate",
-            "tone": "constructive",
-            "length": "medium",
-            "customFeedbackPrompt": ""
-        }
+        "settings": {"strictness": "moderate", "tone": "constructive", "length": "medium", "customFeedbackPrompt": ""},
     }
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope="session")
 def pdf_submission():
     """A submission with a PDF attachment."""
     return {
@@ -135,15 +157,15 @@ def pdf_submission():
                 "media_entry_id": None,
                 "category": "uncategorized",
                 "locked_for_user": False,
-                "preview_url": None
+                "preview_url": None,
             }
         ],
         "proxy_submitter": "Anon Student",
-        "proxy_submitter_id": 271699
+        "proxy_submitter_id": 271699,
     }
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope="session")
 def text_submission():
     """A submission with a text file attachment."""
     return {
@@ -201,15 +223,15 @@ def text_submission():
                 "media_entry_id": None,
                 "category": "uncategorized",
                 "locked_for_user": False,
-                "preview_url": None
+                "preview_url": None,
             }
         ],
         "proxy_submitter": "Anon Student",
-        "proxy_submitter_id": 271699
+        "proxy_submitter_id": 271699,
     }
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope="session")
 def single_submission_request(base_grading_request, pdf_submission):
     """Grading request with a single PDF submission."""
     request = base_grading_request.copy()
@@ -217,7 +239,7 @@ def single_submission_request(base_grading_request, pdf_submission):
     return request
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope="session")
 def multiple_submissions_request(base_grading_request, pdf_submission, text_submission):
     """Grading request with multiple submissions (PDF and text)."""
     request = base_grading_request.copy()

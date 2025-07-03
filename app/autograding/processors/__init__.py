@@ -17,7 +17,5 @@ class ProcessorFactory:
     def get_processor(cls, submission_type: SubmissionType) -> SubmissionProcessor:
         processor_class = cls._processors.get(submission_type)
         if not processor_class:
-            raise ValueError(
-                f"No processor found for submission type: {submission_type}"
-            )
+            raise ValueError(f"No processor found for submission type: {submission_type}")
         return processor_class()

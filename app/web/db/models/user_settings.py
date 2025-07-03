@@ -10,9 +10,7 @@ class CustomSettings(BaseModel):
         moderate = "moderate"
         loose = "loose"
 
-    strictness: StrictnessLevel = Field(
-        StrictnessLevel.moderate, description="Level of strictness for grading."
-    )
+    strictness: StrictnessLevel = Field(StrictnessLevel.moderate, description="Level of strictness for grading.")
 
     class FeedbackTone(str, Enum):
         formal = "formal"
@@ -24,12 +22,8 @@ class CustomSettings(BaseModel):
         medium = "medium"
         detailed = "detailed"
 
-    tone: FeedbackTone = Field(
-        FeedbackTone.constructive, description="Tone of the feedback provided."
-    )
-    length: FeedbackLength = Field(
-        FeedbackLength.medium, description="Length of the feedback."
-    )
+    tone: FeedbackTone = Field(FeedbackTone.constructive, description="Tone of the feedback provided.")
+    length: FeedbackLength = Field(FeedbackLength.medium, description="Length of the feedback.")
     custom_feedback_prompt: Optional[str] = Field(
-        None, description="Custom prompt for generating feedback.",alias="customFeedbackPrompt"
+        None, description="Custom prompt for generating feedback.", alias="customFeedbackPrompt"
     )

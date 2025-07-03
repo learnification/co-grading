@@ -7,9 +7,28 @@ from app.autograding.documents.data_masking import PIIDetector
 import fitz  # PyMuPDF
 
 
+def _download_and_validate_content(url: str, file_path: Path, file_type: str) -> None:
+    """Download content and validate it matches the expected file type."""
+    response = requests.get(url, stream=True, timeout=10)
+    response.raise_for_status()
+    content_type = response.headers.get("Content-Type", "").lower()
+
+    if file_type == "pdf":
+        if "application/pdf" not in content_type:
+            raise ValueError("URL does not point to a PDF file")
+        with open(file_path, "wb") as f:
+            for chunk in response.iter_content(chunk_size=8192):
+                if chunk:
+                    f.write(chunk)
+    else:  # txt file
+        if "text/plain" not in content_type:  # Doesn't handle: text/html, text/csv, text/xml...
+            raise ValueError("URL does not point to a txt file")
+        file_path.write_text(response.text, encoding="utf-8")
+
+
 def download_file(
     url: str,
-    file_type: str, # pdf or txt
+    file_type: str,  # pdf or txt
     *,
     filename: str = str(uuid.uuid4()),
     sub_dirs: Optional[list[str]] = None,
@@ -33,13 +52,11 @@ def download_file(
     Raises:
         RuntimeError: If the download fails or the URL does not point to a PDF/Text.
     """
-    if file_type not in ['pdf', 'txt']:
+    if file_type not in ["pdf", "txt"]:
         raise ValueError(f"Unsupported file type: {file_type}")
     root_download_dir = Path("downloads")
 
-    download_path = (
-        root_download_dir / "/".join(sub_dirs) if sub_dirs else root_download_dir
-    )
+    download_path = root_download_dir / "/".join(sub_dirs) if sub_dirs else root_download_dir
     download_path.mkdir(parents=True, exist_ok=True)
 
     extension = f".{file_type}"
@@ -47,27 +64,13 @@ def download_file(
     file_path = download_path / file_name
 
     try:
-        response = requests.get(url, stream=True, timeout=10)
-        response.raise_for_status()
-        content_type = response.headers.get("Content-Type", "").lower()
-
-        if file_type == 'pdf':
-            if "application/pdf" not in content_type:
-                raise ValueError("URL does not point to a PDF file")
-            with open(file_path, "wb") as f:
-                for chunk in response.iter_content(chunk_size=8192):
-                    if chunk:
-                        f.write(chunk)
-        else: # txt file
-            if "text/plain" not in content_type: # Doesn't handle: text/html, text/csv, text/xml...
-                raise ValueError("URL does not point to a txt file")
-            file_path.write_text(response.text, encoding="utf-8")
+        _download_and_validate_content(url, file_path, file_type)
 
         if apply_data_masking:
-            if file_type == 'pdf':
-                mask_pdf_in_place(file_path)
-            else: #txt
-                mask_txt_in_place(file_path)
+            if file_type == "pdf":
+                mask_pdf_in_place(str(file_path))
+            else:  # txt
+                mask_txt_in_place(str(file_path))
 
         return file_path
 
@@ -92,6 +95,7 @@ def load_pdf(pdf_path: Path, extract_text: bool = False):
         full_text = "\n".join(doc.page_content for doc in documents)
         return full_text
     return loader
+
 
 def load_txt(txt_path: Path, extract_text: bool = False):
     """
@@ -137,10 +141,11 @@ def mask_pdf_in_place(pdf_path: str) -> None:
     except Exception as e:
         print(f"Error while masking PDF: {e}")
         # Cleanup temporary file on error
-        if 'temp_file' in locals() and temp_file.exists():
+        if "temp_file" in locals() and temp_file.exists():
             temp_file.unlink()
     finally:
         doc.close()
+
 
 def mask_txt_in_place(txt_path: str) -> None:
     """
@@ -152,34 +157,32 @@ def mask_txt_in_place(txt_path: str) -> None:
     try:
         # Read the original content
         original_content = txt_file.read_text(encoding="utf-8")
-        
+
         # Apply masking
         masked_content = detector.mask_text(original_content)
-        
+
         # Create temporary file path
         temp_file = txt_file.with_suffix(".tmp")
-        
+
         # Write masked content to temporary file
         temp_file.write_text(masked_content, encoding="utf-8")
-        
+
         # Replace the original file with the masked file
         temp_file.replace(txt_file)
         print(f"Masked txt saved successfully: {txt_file}")
     except Exception as e:
         print(f"Error while masking txt file: {e}")
         # Cleanup temporary file on error
-        if 'temp_file' in locals() and temp_file.exists():
+        if "temp_file" in locals() and temp_file.exists():
             temp_file.unlink()
-    
+
 
 # Wrappers
 
-def download_pdf(url: str, *, filename: str, 
-                sub_dirs: Optional[list[str]] = None, apply_data_masking: bool = True) -> Path:
-    return download_file(url, 'pdf', filename=filename, sub_dirs=sub_dirs, 
-                        apply_data_masking=apply_data_masking)
 
-def download_txt(url: str, *, filename: str,
-                sub_dirs: Optional[list[str]] = None, apply_data_masking: bool = True) -> Path:
-    return download_file(url, 'txt', filename=filename, sub_dirs=sub_dirs,
-                        apply_data_masking=apply_data_masking)
+def download_pdf(url: str, *, filename: str, sub_dirs: Optional[list[str]] = None, apply_data_masking: bool = True) -> Path:
+    return download_file(url, "pdf", filename=filename, sub_dirs=sub_dirs, apply_data_masking=apply_data_masking)
+
+
+def download_txt(url: str, *, filename: str, sub_dirs: Optional[list[str]] = None, apply_data_masking: bool = True) -> Path:
+    return download_file(url, "txt", filename=filename, sub_dirs=sub_dirs, apply_data_masking=apply_data_masking)

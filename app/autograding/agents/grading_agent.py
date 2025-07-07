@@ -1,8 +1,60 @@
 from app.autograding.processors import ProcessorFactory
-from app.web.db.models import Submission, GradingFeedback, CustomSettings
+from app.web.db.models import Submission, GradingFeedback, CustomSettings, ExcerptFeedbackRequest
 from app.web.utils.logger import logger
 from app.autograding.llms import llm_map
 
+def build_simple_evaluation(
+    instructions: ExcerptFeedbackRequest,
+    llm_name = 'llama3.2:3b-instruct-fp16'
+) -> str:
+    
+    llm_builder = llm_map[llm_name]
+    llm = llm_builder(streaming=False)
+
+    # More specific and structured system prompt for Llama 3.2
+    system_instructions = (
+        "You are an expert teaching assistant providing targeted feedback on student writing. "
+        "Your task is to analyze the highlighted text and provide specific, actionable feedback.\n\n"
+        "CRITICAL FORMATTING RULES:\n"
+        "Write in plain text only. Do not use any markdown, bullets (*), dashes (-), or special formatting. "
+        "Do not use section headers like 'Analysis' or 'Targeted Feedback'. "
+        "Write in flowing sentences and paragraphs only.\n\n"
+        "FEEDBACK APPROACH:\n"
+        "Start immediately with your observations. Quote exact phrases from the text when identifying issues. "
+        "For each problem, state what should be changed and provide the corrected version. "
+        "Be direct and specific. Focus only on the highlighted text excerpt."
+    )
+
+    # Build user content with clearer structure
+    user_content = f"STUDENT TEXT TO ANALYZE:\n{instructions.highlighted_text}\n\n"
+    
+    if instructions.rubric_criteria:
+        # Create more specific rubric guidance
+        criteria_text = []
+        for criterion in instructions.rubric_criteria:
+            criteria_text.append(f"- {criterion.description or criterion.id}")
+        
+        user_content += (
+            "EVALUATION CRITERIA:\n"
+            "Focus your feedback exclusively on: " + ", ".join(criteria_text) + "\n\n"
+            "Identify specific issues related to these criteria and explain what should be corrected."
+        )
+    else:
+        user_content += (
+            "TASK:\n"
+            "Provide general feedback on the quality, clarity, and effectiveness of this text. "
+            "Focus on content, organization, clarity, and writing mechanics. "
+            "The text may not be fleshed out, or missing context, and thats okay, this is an excerpt, remember that."
+        )
+
+    messages = [
+        {"role": "system", "content": system_instructions},
+        {"role": "user", "content": user_content}
+    ]
+    
+    response = llm.invoke(messages)
+    logger.info(f"MESSAGE TO LLM: {messages}\n\nRESPONSE: {response.content}")
+    return response.content
 
 def build_evaluation(
     instruction: str,

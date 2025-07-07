@@ -1,6 +1,6 @@
 from typing import Dict, List, Optional
 from pydantic import BaseModel, Field
-from .canvas import Assignment, Course, Submission
+from .canvas import Assignment, Course, Submission, RubricCriterion
 from .user_settings import CustomSettings
 
 
@@ -20,3 +20,8 @@ class GradingFeedback(BaseModel):
 
 
 GradingFeedbackResponse = Dict[int, GradingFeedback]
+
+
+class ExcerptFeedbackRequest(BaseModel):
+    highlighted_text: str
+    rubric_criteria: Optional[List[RubricCriterion]] = None

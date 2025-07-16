@@ -1,8 +1,8 @@
 from typing import Dict, List, Optional
 from pydantic import BaseModel, Field
-from .canvas import Assignment, Course, Submission
+from .canvas import Assignment, Course, Submission, RubricCriterionAssessment, RubricCriterion
 from .user_settings import CustomSettings
-
+from enum import Enum
 
 # Define RequestGradingDto
 class RequestGradingDto(BaseModel):
@@ -20,3 +20,18 @@ class GradingFeedback(BaseModel):
 
 
 GradingFeedbackResponse = Dict[int, GradingFeedback]
+
+class LLMFeedbackRequest(BaseModel):
+    rubricCriterion: RubricCriterion
+    rubricAssessment: Optional[RubricCriterionAssessment] = None
+    assignment: Assignment
+
+class AIFeedbackStatus(str, Enum):
+    SUCCESS = "SUCCESS"
+    WARNING = "WARNING"
+    FAILURE = "FAILURE"
+
+
+class AIFeedback(BaseModel):
+    status: AIFeedbackStatus
+    feedback: str

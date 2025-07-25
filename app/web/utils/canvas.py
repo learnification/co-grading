@@ -128,7 +128,11 @@ class CanvasAPI:
     def _get_headers(self) -> Dict[str, str]:
         """Returns the default authorization headers."""
         return {
+<<<<<<< HEAD
             "Authorization": f"Bearer {self.api_token.get_secret_value()}"
+=======
+            "Authorization": f"Bearer {self.api_token}"
+>>>>>>> 0164ed9 (temp commit)
         }
 
     def _announce_rubric_upload(self, filename: str, size: int) -> Dict[str, Any]:

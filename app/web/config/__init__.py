@@ -1,4 +1,4 @@
-from pydantic import Field
+from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings
 
 
@@ -13,6 +13,9 @@ class Config(BaseSettings):
     REDIS_URI: str = Field(..., json_schema_extra={"env": "REDIS_URI"})
 
     DB_URI: str = Field(..., json_schema_extra={"env": "DB_URI"})
+
+    INSTRUCTURE_URL: str = Field(..., json_schema_extra={"env":"INSTRUCTURE_URL"})
+    INSTRUCTURE_KEY: SecretStr = Field(..., json_schema_extra={"env":"INSTRUCTURE_KEY"})
 
     model_config = {"extra": "allow", "env_file": ".env"}
 

@@ -1,11 +1,16 @@
 from celery.result import AsyncResult
 from app.celery import celery_app
-from fastapi import APIRouter
-from app.web.db.models import RequestGradingDto
+from fastapi import APIRouter, HTTPException
+from app.web.db.models import RequestGradingDto, Assignment, RequestRubricEditDto
 from app.web.tasks import schedule_evaluation
-from app.web.utils import logger
+from app.web.utils import logger, CanvasAPI
+import requests
+from app.autograding.agents import create_rubric_guideline
+from app.web.config import config
 
 router = APIRouter()
+token = config.INSTRUCTURE_KEY.get_secret_value()
+canvas_api = CanvasAPI(token, 'canvas.sfu.ca', 76521)
 
 
 @router.post("/generate", response_model=dict)
@@ -34,3 +39,38 @@ def get_task_status(task_id: str):
         "traceback": ("Failed to generate feedback." if task_result.status == "FAILURE" else None),
     }
     return response
+
+# Passing in Assignment obj (contains description + rubric, all we need)
+# Should we clean this up: only pass assignment + course id
+# handle getting canvas info on backend?
+
+@router.post("/enhance_rubric", response_model=dict)
+def generate_enhanced_rubric(request: Assignment):
+    request_data = request.model_dump(by_alias=True)
+    assignment_id = request_data['id']
+    course_id = request_data['course_id']
+    try:
+
+        logger.info(f"assignment: {request}")
+
+        result = create_rubric_guideline(request)
+        #upload_rubric(result, assignment_id, course_id)
+        canvas_api.upload_rubric(result, assignment_id)
+        return {"generated guideline": result}
+    except Exception as e:
+        logger.error(f"Error in generate_enhanced_rubric: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+    
+@router.post("/update_guideline", response_model=dict)
+def update_generated_guideline(request: RequestRubricEditDto):
+
+    request_data = request.model_dump(by_alias=True)
+    assignment_id = request_data['assignment']['id']
+    course_id = request_data['assignment']['course_id']
+    guideline = request_data['guideline']
+    try:
+        updated = canvas_api.upload_rubric(guideline, assignment_id)
+        return {"updated guideline": updated}
+    except Exception as e:
+        logger.error(f"Error in update_generated_guideline: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))

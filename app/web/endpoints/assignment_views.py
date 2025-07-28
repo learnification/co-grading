@@ -7,6 +7,7 @@ from app.web.utils import logger, CanvasAPI
 from typing import Optional
 from app.autograding.agents import create_rubric_guideline
 from typing import Optional
+from pydantic import SecretStr
 
 
 router = APIRouter()

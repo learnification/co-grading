@@ -5,10 +5,7 @@ import redis
 import pytest
 from fastapi.testclient import TestClient
 from app.web import app
-
-# Add project root to Python path
-project_root = Path(__file__).parent.parent.parent
-sys.path.insert(0, str(project_root))
+import requests
 
 
 @pytest.fixture
@@ -245,3 +242,25 @@ def multiple_submissions_request(base_grading_request, pdf_submission, text_subm
     request = base_grading_request.copy()
     request["submissions"] = [pdf_submission, text_submission]
     return request
+
+def check_rate_limit():
+    """Call your API or check status to see if you're rate limited."""
+    test_type = os.getenv("TEST_LLM_TYPE", "local")
+    if test_type != 'local':
+        api_key = os.getenv("OPENROUTER_API_KEY")
+        response = requests.get(
+            url="https://openrouter.ai/api/v1/key",
+            headers={"Authorization": f"Bearer {api_key}"}
+            )
+        if response.status_code != 200:
+                print(f"❌ Failed to check API key status: {response.status_code}")
+                sys.exit(1)
+        data = response.json()
+        if data.get("default_user", {}).get("credits", 0) <= 0:
+            print("❌ Rate limit hit: No credits remaining.")
+            sys.exit(1)
+        print(f"✅ API credit check passed — Credits remaining: {data['default_user']['credits']}")
+@pytest.fixture(scope="session", autouse=True)
+def api_credit_guard():
+    """Check API credit before running tests."""
+    check_rate_limit()

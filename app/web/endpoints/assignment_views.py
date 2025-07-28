@@ -13,12 +13,6 @@ from app.web.utils import logger, CanvasAPI
 from app.autograding.agents import create_rubric_guideline
 from typing import Optional
 from pydantic import SecretStr
-from app.web.db.models import RequestGradingDto, Assignment, RequestRubricEditDto
-from app.web.tasks import schedule_evaluation
-from app.web.utils import logger, CanvasAPI
-from app.autograding.agents import create_rubric_guideline
-from typing import Optional
-
 
 router = APIRouter()
 

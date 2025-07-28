@@ -1,7 +1,7 @@
 from typing import List, Optional, Tuple
 from langchain_core.prompts import PromptTemplate
 from langchain_ollama import ChatOllama
-from app.autograding.llms import llm_map
+from app.autograding.llms import build_llm_for_task
 from app.autograding.models import GradingArgs
 from app.web.db.models import Assignment, RubricCriterion
 from app.web.utils import logger
@@ -81,7 +81,8 @@ def generate_queries(
             assignment_name=grading_args.assignment.name,
             assignment_description=grading_args.assignment.description,
         )
-        llm = llm_map[llm_name](streaming=False)
+        
+        llm = build_llm_for_task(llm_name, grading_args.openai_token, streaming=False)
         queries = llm.invoke(formatted_prompt).content
         re_queries = re.findall(r"\d+\.\s(.+)", queries)
         return re_queries
@@ -154,6 +155,6 @@ def generate_instruction(
         for query, doc in retrieved_documents:
             input_text += f"\n\nQuery: {query}\nAdvice: {doc}"
 
-    llm = llm_map[llm_name](streaming=False)
+    llm = build_llm_for_task(llm_name, grading_args.openai_token, streaming=False)
     response = llm.invoke(input_text).content.strip()
     return response

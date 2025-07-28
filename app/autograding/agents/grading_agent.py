@@ -1,7 +1,8 @@
 from app.autograding.processors import ProcessorFactory
 from app.web.db.models import Submission, GradingFeedback, CustomSettings
 from app.web.utils.logger import logger
-from app.autograding.llms import llm_map
+from app.autograding.llms import build_llm_for_task
+from pydantic import SecretStr
 
 
 def build_evaluation(
@@ -12,6 +13,7 @@ def build_evaluation(
     *,
     retries: int = 3,
     max_score: float = None,
+    openai_token: SecretStr = None,
 ) -> GradingFeedback:
     """
     Grades a submission using the provided instruction and settings.
@@ -21,12 +23,13 @@ def build_evaluation(
         submission (Submission): The student's submission.
         llm_name (str): The name of the LLM to use.
         custom_settings (CustomSettings): The custom settings for grading.
+        openai_token (str, optional): OpenAI API token for GPT models.
 
     Returns:
         GradingFeedback: The generated grading feedback.
     """
-    llm_builder = llm_map[llm_name]
-    llm = llm_builder(streaming=False).with_structured_output(GradingFeedback)
+
+    llm = build_llm_for_task(llm_name, openai_token, streaming=False).with_structured_output(GradingFeedback)
 
     # Build the instruction content
     instruction_content = f"""
@@ -79,4 +82,5 @@ def build_evaluation(
             llm_name=llm_name,
             custom_settings=custom_settings,
             retries=retries - 1,
+            openai_token=openai_token,
         )

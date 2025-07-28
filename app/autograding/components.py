@@ -23,7 +23,7 @@ def select_component(
     component_type: str,
     component_map: dict,
     grading_args: GradingArgs,
-) -> tuple[str, callable]:
+) -> str:
     components = get_evaluation_components(grading_args.task_id)
 
     if components and getattr(components, component_type):
@@ -32,5 +32,4 @@ def select_component(
         name = random_component(component_type, component_map)
         set_evaluation_components(grading_args.task_id, name)
 
-    builder = component_map[name]
-    return name, builder(grading_args)
+    return name

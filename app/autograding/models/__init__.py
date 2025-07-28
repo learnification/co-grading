@@ -1,6 +1,7 @@
 from typing import List, Optional
-from pydantic import BaseModel, Field, RootModel
+from pydantic import BaseModel, Field, RootModel, SecretStr
 from app.web.db.models import RubricCriterion
+from app.web.db.models.canvas import Assignment
 
 
 class Assignment(BaseModel):
@@ -14,6 +15,7 @@ class GradingArgs(BaseModel):
     task_id: str
     assignment: Assignment
     pdf_path: Optional[str] = Field(None, description="Path to the PDF file that user uploaded")
+    openai_token: Optional[SecretStr] = Field(None, description="OpenAI API token for GPT models")
 
 
 class Queries(RootModel):

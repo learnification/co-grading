@@ -1,21 +1,29 @@
 from celery.result import AsyncResult
 from app.celery import celery_app
-from fastapi import APIRouter
+from fastapi import APIRouter, Header
 from app.web.db.models import RequestGradingDto
 from app.web.tasks import schedule_evaluation
 from app.web.utils import logger
+from typing import Optional
 
 router = APIRouter()
 
-
 @router.post("/generate", response_model=dict)
-def generate_grading_feedback(request: RequestGradingDto):
+def generate_grading_feedback(
+    request: RequestGradingDto, 
+    x_user_openai_key: Optional[str] = Header(None, alias="X-User-OpenAI-Key")
+):
     """
     Enqueue a grading and feedback generation task.
     Returns a task_id to track the task status and retrieve results.
     """
     logger.info(f"Received grading request for assignment {request}")
     request_data = request.model_dump(by_alias=True)
+    
+    if x_user_openai_key:
+        request_data["openai_token"] = x_user_openai_key
+        logger.info("OpenAI token provided, will use GPT-4.1-mini for grading")
+    
     # Enqueue the Celery task
     task = schedule_evaluation.delay(request_data)
     return {"task_id": task.id}

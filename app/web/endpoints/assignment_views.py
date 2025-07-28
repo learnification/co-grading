@@ -1,29 +1,8 @@
 from celery.result import AsyncResult
 from app.celery import celery_app
-<<<<<<< HEAD
-from fastapi import APIRouter, Header, HTTPException
-from app.web.db.models import RequestGradingDto
-from fastapi import APIRouter, HTTPException, Header
-from pydantic import SecretStr
-from app.web.db.models.evaluation import GenerateGuidelineRequest,UpdateGuidelineRequest
-from app.web.db.models import RequestGradingDto
-from app.web.tasks import schedule_evaluation
-from app.web.utils import logger, CanvasAPI
-from app.autograding.agents import create_rubric_guideline
-from app.web.utils import logger, CanvasAPI
-from app.autograding.agents import create_rubric_guideline
-from typing import Optional
-=======
-from fastapi import APIRouter, HTTPException, Header
->>>>>>> b6202ab (fixes)
-from pydantic import SecretStr
-from app.web.db.models import RequestGradingDto, Assignment, RequestRubricEditDto
-from app.web.tasks import schedule_evaluation
-from app.web.utils import logger, CanvasAPI
-from typing import Optional
-from app.autograding.agents import create_rubric_guideline
 
 router = APIRouter()
+
 
 @router.post("/generate", response_model=dict)
 def generate_grading_feedback(

@@ -1,17 +1,14 @@
 from celery.result import AsyncResult
 from app.celery import celery_app
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Header
+from pydantic import SecretStr
 from app.web.db.models import RequestGradingDto, Assignment, RequestRubricEditDto
 from app.web.tasks import schedule_evaluation
 from app.web.utils import logger, CanvasAPI
 import requests
 from app.autograding.agents import create_rubric_guideline
-from app.web.config import config
 
 router = APIRouter()
-token = config.INSTRUCTURE_KEY.get_secret_value()
-canvas_api = CanvasAPI(token, 'canvas.sfu.ca', 76521)
-
 
 @router.post("/generate", response_model=dict)
 def generate_grading_feedback(request: RequestGradingDto):
@@ -45,32 +42,45 @@ def get_task_status(task_id: str):
 # handle getting canvas info on backend?
 
 @router.post("/enhance_rubric", response_model=dict)
-def generate_enhanced_rubric(request: Assignment):
+def generate_enhanced_rubric(request: Assignment, x_canvas_token: SecretStr = Header(..., alias="X-Canvas-Token")):
     request_data = request.model_dump(by_alias=True)
     assignment_id = request_data['id']
     course_id = request_data['course_id']
     try:
-
         logger.info(f"assignment: {request}")
-
+        canvas_api = CanvasAPI(x_canvas_token, 'canvas.sfu.ca', course_id)
         result = create_rubric_guideline(request)
-        #upload_rubric(result, assignment_id, course_id)
         canvas_api.upload_rubric(result, assignment_id)
         return {"generated guideline": result}
     except Exception as e:
         logger.error(f"Error in generate_enhanced_rubric: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
     
-@router.post("/update_guideline", response_model=dict)
-def update_generated_guideline(request: RequestRubricEditDto):
+@router.put("/update_guideline", response_model=dict)
+def update_generated_guideline(request: RequestRubricEditDto, x_canvas_token: SecretStr = Header(..., alias="X-Canvas-Token")):
 
     request_data = request.model_dump(by_alias=True)
     assignment_id = request_data['assignment']['id']
     course_id = request_data['assignment']['course_id']
     guideline = request_data['guideline']
     try:
+        canvas_api = CanvasAPI(x_canvas_token, 'canvas.sfu.ca', course_id)
         updated = canvas_api.upload_rubric(guideline, assignment_id)
         return {"updated guideline": updated}
     except Exception as e:
         logger.error(f"Error in update_generated_guideline: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+    
+@router.get("/guidelines/{course_id}/{assignment_id}", response_model=dict)
+def get_guideline(course_id: int, assignment_id: int, x_canvas_token: SecretStr = Header(..., alias="X-Canvas-Token")):
+    """
+    Retrieve the rubric/guideline for a specific assignment from Canvas.
+    """
+    try:
+        logger.info(f"Received request to get guideline for course_id: {course_id}, assignment_id: {assignment_id}")
+        canvas_api = CanvasAPI(x_canvas_token, 'canvas.sfu.ca', course_id)
+        guideline = canvas_api.get_rubric(assignment_id)
+        return {"guideline": guideline}
+    except Exception as e:
+        logger.error(f"Error in get_guideline: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))

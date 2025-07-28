@@ -2,9 +2,11 @@ import requests
 from typing import Optional, Dict, Any, List
 import json
 from io import BytesIO
+from fastapi import HTTPException
+from pydantic import SecretStr
 
 class CanvasAPI:
-    def __init__(self, api_token: str, domain: str, course_id: int):
+    def __init__(self, api_token: SecretStr, domain: str, course_id: int):
         self.api_token = api_token
         self.domain = domain
         self.course_id = course_id
@@ -80,6 +82,26 @@ class CanvasAPI:
         }
         return self._request('post', '/folders', data=data)
 
+    def get_rubric(self, assignment_id: int) -> Dict[str, Any]:
+        """Retrieves a rubric for a specific assignment using the Canvas search API."""
+        search_term = f"{assignment_id}_rubric_guideline.json"
+        # Use the search_term parameter to find the file directly
+        search_results = self._request('get', f"/files?search_term={search_term}")
+
+        if not search_results:
+            raise HTTPException(status_code=404, detail=f"Rubric file for assignment {assignment_id} not found.")
+
+        # Assuming the first result is the correct one
+        file_metadata = search_results[0]
+        download_url = file_metadata.get("url")
+
+        if not download_url:
+            raise HTTPException(status_code=500, detail="Rubric file found but download URL is missing.")
+
+        response = requests.get(download_url)
+        response.raise_for_status()
+        return response.json()
+
     # --- Private Helper Methods ---
 
     def _request(self, method: str, endpoint: str, **kwargs) -> Any:
@@ -106,7 +128,7 @@ class CanvasAPI:
     def _get_headers(self) -> Dict[str, str]:
         """Returns the default authorization headers."""
         return {
-            "Authorization": f"Bearer {self.api_token}"
+            "Authorization": f"Bearer {self.api_token.get_secret_value()}"
         }
 
     def _announce_rubric_upload(self, filename: str, size: int) -> Dict[str, Any]:

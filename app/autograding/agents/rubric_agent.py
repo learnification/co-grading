@@ -83,8 +83,5 @@ def _map_to_frontend_format(
             "criterion": criterion.description,
             "instruction": instruction
         })
-
-    with open("temp_file.json", "w") as f:
-        json.dump(result, f, indent=2)
     
     return result

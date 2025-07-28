@@ -4,6 +4,8 @@ import json
 from io import BytesIO
 from fastapi import HTTPException
 from pydantic import SecretStr
+from fastapi import HTTPException
+from pydantic import SecretStr
 
 class CanvasAPI:
     def __init__(self, api_token: SecretStr, domain: str, course_id: int):
@@ -128,11 +130,7 @@ class CanvasAPI:
     def _get_headers(self) -> Dict[str, str]:
         """Returns the default authorization headers."""
         return {
-<<<<<<< HEAD
             "Authorization": f"Bearer {self.api_token.get_secret_value()}"
-=======
-            "Authorization": f"Bearer {self.api_token}"
->>>>>>> 0164ed9 (temp commit)
         }
 
     def _announce_rubric_upload(self, filename: str, size: int) -> Dict[str, Any]:

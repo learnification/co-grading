@@ -253,13 +253,13 @@ def check_rate_limit():
             headers={"Authorization": f"Bearer {api_key}"}
             )
         if response.status_code != 200:
-                print(f":x: Failed to check API key status: {response.status_code}")
+                print(f"❌ Failed to check API key status: {response.status_code}")
                 sys.exit(1)
         data = response.json()
         if data.get("default_user", {}).get("credits", 0) <= 0:
-            print(":x: Rate limit hit: No credits remaining.")
+            print("❌ Rate limit hit: No credits remaining.")
             sys.exit(1)
-        print(f":white_check_mark: API credit check passed — Credits remaining: {data['default_user']['credits']}")
+        print(f"✅ API credit check passed — Credits remaining: {data['default_user']['credits']}")
 @pytest.fixture(scope="session", autouse=True)
 def api_credit_guard():
     """Check API credit before running tests."""

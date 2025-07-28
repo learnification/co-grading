@@ -22,7 +22,6 @@ from typing import Optional
 
 router = APIRouter()
 
-
 @router.post("/generate", response_model=dict)
 def generate_grading_feedback(
     request: RequestGradingDto, 

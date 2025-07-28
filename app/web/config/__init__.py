@@ -14,9 +14,6 @@ class Config(BaseSettings):
 
     DB_URI: str = Field(..., json_schema_extra={"env": "DB_URI"})
 
-    INSTRUCTURE_URL: str = Field(..., json_schema_extra={"env":"INSTRUCTURE_URL"})
-    INSTRUCTURE_KEY: SecretStr = Field(..., json_schema_extra={"env":"INSTRUCTURE_KEY"})
-
     model_config = {"extra": "allow", "env_file": ".env"}
 
 

@@ -37,6 +37,11 @@ class CriterionInstructionIDs(BaseModel):
     criterion: str = Field(description="The name of the rubric criterion")
     instruction: str = Field(description="Actionable instruction for the next AI to follow for this criterion")
 
-class RequestRubricEditDto(BaseModel):
+class GenerateGuidelineRequest(BaseModel):
+    assignment: Assignment
+    baseURL: str
+
+class UpdateGuidelineRequest(BaseModel):
     assignment: Assignment
     guideline: List[CriterionInstructionIDs]
+    baseURL: str

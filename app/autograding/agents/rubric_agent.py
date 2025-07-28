@@ -1,22 +1,21 @@
 from dotenv import load_dotenv
 from typing import TypedDict, List, Dict
-from pydantic import SecretStr
+from langgraph.graph import StateGraph, END
 from langchain_openai import ChatOpenAI
+from langgraph.prebuilt import create_react_agent
 from app.web.db.models import Assignment, RubricCriterion, EnhancedRubricResponse
 import json
 
 load_dotenv()
 
 
-def create_rubric_guideline(assignment: Assignment, openai_key: SecretStr = None) -> List[Dict]:
+def create_rubric_guideline(assignment: Assignment) -> List[Dict]:
     """
     Workflow for enhancing a rubric with AI-generated sub-rules.
     This should be run once per assignment.
     """
 
-    # Have to wait until https://github.com/learnification/co-grading/pull/65 is merged to complete.
-    # Need to add functionality for switching between local and ai model
-    llm = ChatOpenAI(model="gpt-4.1-mini-2025-04-14", temperature=0, api_key=openai_key).with_structured_output(EnhancedRubricResponse)
+    llm = ChatOpenAI(model="gpt-4.1-mini-2025-04-14", temperature=0).with_structured_output(EnhancedRubricResponse)
     criteria_list = assignment.rubric
     assignment_description = assignment.description
 

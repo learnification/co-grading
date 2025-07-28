@@ -4,7 +4,8 @@ from fastapi import APIRouter, Header, HTTPException
 from app.web.db.models import RequestGradingDto
 from fastapi import APIRouter, HTTPException, Header
 from pydantic import SecretStr
-from app.web.db.models import RequestGradingDto, Assignment, RequestRubricEditDto
+from app.web.db.models.evaluation import GenerateGuidelineRequest,UpdateGuidelineRequest
+from app.web.db.models import RequestGradingDto
 from app.web.tasks import schedule_evaluation
 from app.web.utils import logger, CanvasAPI
 from typing import Optional
@@ -21,6 +22,7 @@ from typing import Optional
 
 
 router = APIRouter()
+
 
 @router.post("/generate", response_model=dict)
 def generate_grading_feedback(

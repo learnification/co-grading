@@ -5,13 +5,14 @@ from app.web.db.models import RequestGradingDto
 from app.web.tasks import schedule_evaluation
 from app.web.utils import logger
 from typing import Optional
+from pydantic import SecretStr
 
 router = APIRouter()
 
 @router.post("/generate", response_model=dict)
 def generate_grading_feedback(
     request: RequestGradingDto, 
-    x_user_openai_key: Optional[str] = Header(None, alias="X-User-OpenAI-Key")
+    x_user_openai_key: Optional[SecretStr] = Header(None, alias="X-User-OpenAI-Key")
 ):
     """
     Enqueue a grading and feedback generation task.
@@ -21,7 +22,7 @@ def generate_grading_feedback(
     request_data = request.model_dump(by_alias=True)
     
     if x_user_openai_key:
-        request_data["openai_token"] = x_user_openai_key
+        request_data["openai_token"] = x_user_openai_key.get_secret_value()
         logger.info("OpenAI token provided, will use GPT-4.1-mini for grading")
     
     # Enqueue the Celery task

@@ -1,5 +1,5 @@
 from typing import Dict, List, Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, SecretStr
 from .canvas import Assignment, Course, Submission
 from .user_settings import CustomSettings
 
@@ -11,6 +11,8 @@ class RequestGradingDto(BaseModel):
     submissions: List[Submission]
     settings: CustomSettings
     document_id: Optional[str] = Field(None, alias="documentId")
+    openai_token: Optional[SecretStr] = None
+
 
 
 class GradingFeedback(BaseModel):

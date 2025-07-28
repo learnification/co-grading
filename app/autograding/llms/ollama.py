@@ -23,6 +23,18 @@ def build_openrouter_llm(streaming: bool = False):
     )
 
 
+def build_openai_gpt4_mini(streaming: bool = False, api_key: str = None):
+    """Build OpenAI GPT-4o-mini with user-provided API key."""
+    if not api_key:
+        raise ValueError("OpenAI API key is required for GPT-4.1-mini")
+    return ChatOpenAI(
+        model="gpt-4.1-mini-2025-04-14",
+        api_key=api_key,
+        temperature=0.1,
+        max_retries=3,
+    )
+
+
 def build_instructor():
     return instructor.from_openai(
         OpenAI(

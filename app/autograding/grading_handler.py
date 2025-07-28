@@ -20,6 +20,7 @@ def generate_feedback(request: RequestGradingDto, task_id: str) -> dict:
             "max_points": request.assignment.points_possible,
             "rubric": request.assignment.rubric,
         },
+        openai_token=request.openai_token,
     )
 
     if request.document_id:
@@ -36,6 +37,7 @@ def generate_feedback(request: RequestGradingDto, task_id: str) -> dict:
             submission=submission,
             llm_name=llm_name,
             custom_settings=request.settings,
+            openai_token=request.openai_token,
         )
         feedbacks[submission.user_id] = feedback.model_dump()
 

@@ -6,7 +6,7 @@ from pydantic import SecretStr
 from openai import RateLimitError
 from app.autograding.llms import build_llm_for_task
 from pydantic import SecretStr
-
+from openai import RateLimitError
 
 def build_evaluation(
     instruction: str,

@@ -6,6 +6,7 @@ import pytest
 from fastapi.testclient import TestClient
 from app.web import app
 import requests
+import json
 
 
 @pytest.fixture
@@ -256,10 +257,11 @@ def check_rate_limit():
                 print(f"❌ Failed to check API key status: {response.status_code}")
                 sys.exit(1)
         data = response.json()
-        if data.get("default_user", {}).get("credits", 0) <= 0:
+        print(f"Response: {response.status_code} \n\n {json.dumps(response.json(), indent=2)}")
+        if data.get("data", {}).get("usage", 0) >= 50:
             print("❌ Rate limit hit: No credits remaining.")
             sys.exit(1)
-        print(f"✅ API credit check passed — Credits remaining: {data['default_user']['credits']}")
+        print(f"✅ API credit check passed — Credits remaining: {50 - data['data']['usage']}")
 @pytest.fixture(scope="session", autouse=True)
 def api_credit_guard():
     """Check API credit before running tests."""

@@ -6,7 +6,7 @@ from app.web.utils.logger import logger
 from app.celery import celery_app
 from app.web.db.models import RequestGradingDto
 from app.autograding.grading_handler import generate_feedback
-
+from openai import RateLimitError
 
 @celery_app.task(bind=True, max_retries=3, default_retry_delay=60)
 def schedule_evaluation(self, request_data: dict):
@@ -15,8 +15,11 @@ def schedule_evaluation(self, request_data: dict):
         feedbacks = generate_feedback(request, self.request.id)
         return feedbacks
     except Exception as e:
-        logger.error(f"Error scheduling evaluations with aggregation: {e}")
-        raise self.retry(exc=e)
+        logger.error(f"An error occurred in schedule_evaluation: {e}")
+        # Fail immediately on a rate limit error, otherwise retry.
+        if isinstance(e, RateLimitError):
+            raise
+        raise self.retry(exc=e)  # Retry for all other exceptions
 
 
 @celery_app.task(bind=True, max_retries=3, default_retry_delay=60)

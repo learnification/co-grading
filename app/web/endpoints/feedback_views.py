@@ -2,6 +2,7 @@ from fastapi import APIRouter
 from pydantic import BaseModel
 from openai import OpenAI
 import json
+import os
 
 from app.web.db.models.evaluation import AIFeedback, AIFeedbackStatus, LLMFeedbackRequest
 from app.autograding.feedback_prompts import generate_llm_feedback_messages
@@ -10,9 +11,20 @@ router = APIRouter()
 
 @router.post("/llm-feedback", response_model=AIFeedback)
 async def get_llm_feedback(request: LLMFeedbackRequest):
-    # Hardcoded OpenAI API key and model for now
-    OPENAI_API_KEY = "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"  # <<< REPLACE WITH YOUR ACTUAL KEY
-    OPENAI_MODEL_NAME = "gpt-4.1-mini-2025-04-14" # Or "gpt-3.5-turbo", etc.
+    # Original OpenAI setup (commented out for rollback)
+    # OPENAI_API_KEY = "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"  # <<< REPLACE WITH YOUR ACTUAL KEY
+    # OPENAI_MODEL_NAME = "gpt-4.1-mini-2025-04-14" # Or "gpt-3.5-turbo", etc.
+
+    # OpenRouter configuration
+    OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+    if not OPENROUTER_API_KEY:
+        return AIFeedback(
+            feedback="Error: OPENROUTER_API_KEY environment variable not set.",
+            status=AIFeedbackStatus.FAILURE
+        )
+    
+    # OpenRouter model configuration - you can use various models
+    OPENROUTER_MODEL_NAME = "openai/gpt-4o-mini"  # or "anthropic/claude-3-haiku", "google/gemini-pro", etc.
 
     # Check for missing comments or points
     if not request.rubricAssessment or (not request.rubricAssessment.comments and request.rubricAssessment.points is None):
@@ -31,14 +43,29 @@ async def get_llm_feedback(request: LLMFeedbackRequest):
             status=AIFeedbackStatus.FAILURE
         )
 
-    client = OpenAI(api_key=OPENAI_API_KEY)
+    # Original OpenAI client setup (commented out for rollback)
+    # client = OpenAI(api_key=OPENAI_API_KEY)
+    
+    # OpenRouter client setup
+    client = OpenAI(
+        api_key=OPENROUTER_API_KEY,
+        base_url="https://openrouter.ai/api/v1"
+    )
     print(f"request: {request}")
     messages = generate_llm_feedback_messages(request.rubricCriterion, request.rubricAssessment, request.assignment)
     print(f"msg: {messages}")
 
     try:
+        # Original OpenAI model call (commented out for rollback)
+        # response = client.chat.completions.create(
+        #     model=OPENAI_MODEL_NAME,
+        #     messages=messages,
+        #     response_format={"type": "json_object"}
+        # )
+        
+        # OpenRouter model call
         response = client.chat.completions.create(
-            model=OPENAI_MODEL_NAME,
+            model=OPENROUTER_MODEL_NAME,
             messages=messages,
             response_format={"type": "json_object"}
         )

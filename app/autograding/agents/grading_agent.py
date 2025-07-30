@@ -1,6 +1,7 @@
 from app.autograding.processors import ProcessorFactory
 from app.web.db.models import Submission, GradingFeedback, CustomSettings
 from app.web.utils.logger import logger
+from openai import RateLimitError
 from app.autograding.llms import build_llm_for_task
 from pydantic import SecretStr
 
@@ -66,6 +67,9 @@ def build_evaluation(
 
         response.submission_id = submission.id
         return response
+    except RateLimitError as e:
+        logger.error(f"Rate limit error grading submission ID {submission.id}: {e}")
+        raise
     except Exception as e:
         if retries <= 0:
             feedback = GradingFeedback(

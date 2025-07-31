@@ -25,6 +25,16 @@ class LLMFeedbackRequest(BaseModel):
     rubricCriterion: RubricCriterion
     rubricAssessment: Optional[RubricCriterionAssessment] = None
     assignment: Assignment
+    extra: dict  # Contains courseId, assignmentId, userId
+
+class AuditRetrievalRequest(BaseModel):   # For audit-retrieval
+    assignmentId: int
+    userId: int
+    courseId: int
+
+class ApprovalRetrievalRequest(BaseModel): # For approval-retrieval
+    assignmentId: int
+    courseId: int
 
 class AIFeedbackStatus(str, Enum):
     SUCCESS = "SUCCESS"
@@ -62,5 +72,3 @@ class UpdateGuidelineRequest(BaseModel):
     guideline: List[CriterionInstructionIDs]
     baseURL: str
 
-
-\

@@ -8,6 +8,11 @@ from pydantic import SecretStr
 from fastapi import HTTPException
 from pydantic import SecretStr
 
+# Global cache for file metadata (5 minute TTL)
+_file_cache = {}
+_cache_ttl = 300  # 5 minutes
+_cache_timestamps = {}
+
 class CanvasAPI:
     def __init__(self, api_token: SecretStr, domain: str, course_id: int):
         self.api_token = api_token
@@ -98,6 +103,14 @@ class CanvasAPI:
             json_bytes
         )
         
+        # Invalidate cache for this file
+        cache_key = f"{assignment_id}_{filename}"
+        if cache_key in _file_cache:
+            del _file_cache[cache_key]
+            if cache_key in _cache_timestamps:
+                del _cache_timestamps[cache_key]
+            print(f"[DEBUG] Invalidated cache for: {cache_key}")
+        
         return self._confirm_upload(upload_response)
 
     def upload_root(self, file_data: Dict[str, Any], filename: str, overwrite: bool = True) -> Dict[str, Any]:
@@ -158,7 +171,46 @@ class CanvasAPI:
             json_bytes
         )
         
+        # Invalidate cache for this file
+        cache_key = f"root_{filename}"
+        if cache_key in _file_cache:
+            del _file_cache[cache_key]
+            if cache_key in _cache_timestamps:
+                del _cache_timestamps[cache_key]
+            print(f"[DEBUG] Invalidated cache for: {cache_key}")
+        
         return self._confirm_upload(upload_response)
+
+    def _get_cached_file(self, cache_key: str) -> Optional[Dict[str, Any]]:
+        """Get file from cache if not expired."""
+        import time
+        current_time = time.time()
+        
+        if cache_key in _file_cache:
+            if current_time - _cache_timestamps.get(cache_key, 0) < _cache_ttl:
+                print(f"[DEBUG] Cache hit for: {cache_key}")
+                return _file_cache[cache_key]
+            else:
+                # Cache expired, remove it
+                del _file_cache[cache_key]
+                if cache_key in _cache_timestamps:
+                    del _cache_timestamps[cache_key]
+        
+        return None
+
+    def _cache_file(self, cache_key: str, file_data: Dict[str, Any]) -> None:
+        """Cache file data with timestamp."""
+        import time
+        _file_cache[cache_key] = file_data
+        _cache_timestamps[cache_key] = time.time()
+        print(f"[DEBUG] Cached file: {cache_key}")
+
+    def clear_cache(self) -> None:
+        """Clear all cached files."""
+        global _file_cache, _cache_timestamps
+        _file_cache.clear()
+        _cache_timestamps.clear()
+        print(f"[DEBUG] Cache cleared")
 
     def get_file(self, assignment_id: int, filename: str) -> Dict[str, Any]:
         """
@@ -168,11 +220,17 @@ class CanvasAPI:
             assignment_id: The assignment ID
             filename: The name of the file (without .json extension)
         """
+        cache_key = f"{assignment_id}_{filename}"
+        
+        # Check cache first
+        cached_data = self._get_cached_file(cache_key)
+        if cached_data:
+            return cached_data
+        
         appendedFilename = f"{assignment_id}_{filename}.json"
         search_term = appendedFilename
         print(f"[DEBUG] Searching for file: {search_term}")
         
-
         search_results = self._request('get', f"/files?search_term={search_term}")
         print(f"[DEBUG] Search returned {len(search_results)} results")
 
@@ -190,7 +248,12 @@ class CanvasAPI:
         print(f"[DEBUG] Downloading from: {download_url}")
         response = requests.get(download_url)
         response.raise_for_status()
-        return response.json()
+        file_data = response.json()
+        
+        # Cache the result
+        self._cache_file(cache_key, file_data)
+        
+        return file_data
 
     def get_root_file(self, filename: str) -> Dict[str, Any]:
         """
@@ -199,6 +262,13 @@ class CanvasAPI:
         Args:
             filename: The name of the file (without .json extension)
         """
+        cache_key = f"root_{filename}"
+        
+        # Check cache first
+        cached_data = self._get_cached_file(cache_key)
+        if cached_data:
+            return cached_data
+        
         appended_filename = f"{filename}.json"
         search_term = appended_filename
         print(f"[DEBUG] Searching for root file: {search_term}")
@@ -228,7 +298,12 @@ class CanvasAPI:
         print(f"[DEBUG] Downloading from: {download_url}")
         response = requests.get(download_url)
         response.raise_for_status()
-        return response.json()
+        file_data = response.json()
+        
+        # Cache the result
+        self._cache_file(cache_key, file_data)
+        
+        return file_data
 
     def list_files_in_assignment_folder(self, assignment_id: int) -> List[Dict[str, Any]]:
         """

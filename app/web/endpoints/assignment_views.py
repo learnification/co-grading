@@ -1,3 +1,5 @@
+from app.web.db.models.evaluation import AutogradeThresholdRequest, AutogradeToggleRequest, AutogradeCheckRequest, ThresholdCheckRequest
+from urllib.parse import urlparse
 from celery.result import AsyncResult
 from app.celery import celery_app
 from fastapi import APIRouter, Header, HTTPException
@@ -108,3 +110,205 @@ def get_guideline(
     except Exception as e:
         logger.error(f"Error in get_guideline: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/toggle-autograde")
+async def toggle_autograde(
+    request: AutogradeToggleRequest,
+    x_canvas_token: SecretStr = Header(..., alias="X-Canvas-Token"),
+    x_canvas_base_url: Optional[str] = Header("canvas.sfu.ca", alias="X-Canvas-Base-Url"),
+):
+    """
+    Toggles autograde enabled status for an assignment.
+    
+    Checks for assignmentId_autograde_enabled.json file in the assignment folder.
+    If file doesn't exist, creates it with enabled=False.
+    If file exists, toggles the current enabled value.
+    
+    Args:
+    - assignmentId: Canvas assignment ID
+    - courseId: Canvas course ID  
+    - graderId: Canvas grader ID
+    
+    Returns:
+    - Success message with current enabled status
+    """
+    try:
+        domain = urlparse(x_canvas_base_url).netloc
+
+        canvas_api = CanvasAPI(
+            api_token=x_canvas_token,
+            domain=domain,
+            course_id=request.courseId
+        )
+        
+
+        grader_name = "Unknown Grader"
+        try:
+            grader_data = canvas_api._global_request('get', f"/users/{request.graderId}")
+            grader_name = grader_data.get("name", "Unknown Grader")
+        except Exception as e:
+            logger.error(f"Could not get grader name: {e}")
+        
+        try:
+            existing_data = canvas_api.get_file(request.assignmentId, "autograde_enabled")
+            current_enabled = existing_data.get("enabled", False)      # If doesn't catch error at this point, file exists
+            new_enabled = not current_enabled
+            
+            # Update the file
+            updated_data = {
+                "set-by": grader_name,
+                "enabled": new_enabled
+            }
+            
+            canvas_api.upload_file(updated_data, request.assignmentId, "autograde_enabled", overwrite=True)
+            
+            return {
+                "message": f"Autograde {'enabled' if new_enabled else 'disabled'} successfully",
+                "enabled": new_enabled
+            }
+            
+        except Exception as e:
+            # File doesn't exist, create it with enabled=False
+            new_data = {
+                "set-by": grader_name,
+                "enabled": False
+            }
+            
+            canvas_api.upload_file(new_data, request.assignmentId, "autograde_enabled", overwrite=True)
+            
+            return {
+                "message": "Autograde settings file created and disabled",
+                "enabled": False
+            }
+            
+    except Exception as e:
+        logger.error(f"Error toggling autograde: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error toggling autograde: {str(e)}")
+
+@router.post("/set-threshold")
+async def set_threshold(
+    request: AutogradeThresholdRequest,
+    x_canvas_token: SecretStr = Header(..., alias="X-Canvas-Token"),
+    x_canvas_base_url: Optional[str] = Header("canvas.sfu.ca", alias="X-Canvas-Base-Url"),
+):
+    """
+    Sets autograde threshold for a course.
+    
+    Creates or updates autograde_threshold.json file in the development folder (course-wide).
+    Always overwrites the existing file with new threshold value and grader information.
+    
+    Args:
+    - courseId: Canvas course ID
+    - graderId: Canvas grader ID
+    - threshold: Threshold value to set
+    
+    Returns:
+    - Success message with threshold value
+    """
+    try:
+        domain = urlparse(x_canvas_base_url).netloc
+
+        canvas_api = CanvasAPI(
+            api_token=x_canvas_token,
+            domain=domain,
+            course_id=request.courseId
+        )
+        
+        # Get grader name
+        grader_name = "Unknown Grader"
+        try:
+            grader_data = canvas_api._global_request('get', f"/users/{request.graderId}")
+            grader_name = grader_data.get("name", "Unknown Grader")
+        except Exception as e:
+            logger.error(f"Could not get grader name: {e}")
+        
+        # Create/update threshold file (course-wide)
+        threshold_data = {
+            "set-by": grader_name,
+            "threshold": request.threshold
+        }
+        
+        canvas_api.upload_root(threshold_data, "autograde_threshold", overwrite=True)
+        
+        return {
+            "message": f"Threshold set to {request.threshold} successfully",
+            "threshold": request.threshold
+        }
+        
+    except Exception as e:
+        logger.error(f"Error setting threshold: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error setting threshold: {str(e)}")
+
+
+@router.post("/get-autograde-setting")
+async def get_autograde_setting(
+    request: AutogradeCheckRequest,
+    x_canvas_token: SecretStr = Header(..., alias="X-Canvas-Token"),
+    x_canvas_base_url: Optional[str] = Header("canvas.sfu.ca", alias="X-Canvas-Base-Url"),
+):
+    """
+    Retrieves autograde setting for a specific assignment.
+    
+    Finds and returns the assignmentId_autograde_enabled.json file as JSON.
+    
+    Args:
+    - assignmentId: Canvas assignment ID
+    - courseId: Canvas course ID
+    
+    Returns:
+    - JSON content of the autograde settings file
+    """
+    try:
+        domain = urlparse(x_canvas_base_url).netloc
+
+        canvas_api = CanvasAPI(
+            api_token=x_canvas_token,
+            domain=domain,
+            course_id=request.courseId
+        )
+        
+        # Get the autograde settings file
+        autograde_data = canvas_api.get_file(request.assignmentId, "autograde_enabled")
+        
+        return autograde_data
+        
+    except Exception as e:
+        logger.error(f"Error getting autograde setting: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error getting autograde setting: {str(e)}")
+
+
+@router.post("/get-threshold")
+async def get_threshold(
+    request: ThresholdCheckRequest,
+    x_canvas_token: SecretStr = Header(..., alias="X-Canvas-Token"),
+    x_canvas_base_url: Optional[str] = Header("canvas.sfu.ca", alias="X-Canvas-Base-Url"),
+):
+    """
+    Retrieves autograde threshold for the course.
+    
+    Finds and returns the autograde_threshold.json file as JSON.
+    
+    Args:
+    - courseId: Canvas course ID
+    
+    Returns:
+    - JSON content of the threshold file
+    """
+    try:
+        domain = urlparse(x_canvas_base_url).netloc
+
+        canvas_api = CanvasAPI(
+            api_token=x_canvas_token,
+            domain=domain,
+            course_id=request.courseId
+        )
+        
+        # Get the threshold file (course-wide)
+        threshold_data = canvas_api.get_root_file("autograde_threshold")
+        
+        return threshold_data
+        
+    except Exception as e:
+        logger.error(f"Error getting threshold: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error getting threshold: {str(e)}")

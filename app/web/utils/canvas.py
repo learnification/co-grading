@@ -15,69 +15,15 @@ class CanvasAPI:
         self.course_id = course_id
         self.base_url = f"https://{domain}/api/v1/courses/{course_id}"
 
-
-    # --- COMMENTED OUT - ORIGINAL RUBRIC FUNCTIONS (FALLBACK) ---
-    # def upload_rubric(self, rubric_data: Dict[str, Any], assignment_id: int) -> Dict[str, Any]:
-    #     """Uploads a rubric JSON to the designated course folder in Canvas."""
-    #     filename = f"{assignment_id}_rubric_guideline.json"
-    #     json_bytes = json.dumps(rubric_data, indent=2).encode('utf-8')
-
-    #     upload_details = self._announce_rubric_upload(filename, len(json_bytes))
-        
-    #     upload_response = self._execute_upload_to_url(
-    #         upload_details['upload_url'],
-    #         upload_details['upload_params'],
-    #         filename,
-    #         json_bytes
-    #     )
-        
-    #     return self._confirm_upload(upload_response)
-
-    # def get_rubric(self, assignment_id: int) -> Dict[str, Any]:
-    #     """Retrieves a rubric for a specific assignment using the Canvas search API."""
-    #     search_term = f"{assignment_id}_rubric_guideline.json"
-    #     # Use the search_term parameter to find the file directly
-    #     search_results = self._request('get', f"/files?search_term={search_term}")
-
-    #     if not search_results:
-    #         raise HTTPException(status_code=404, detail=f"Rubric file for assignment {assignment_id} not found.")
-
-    #     # Assuming the first result is the correct one
-    #     file_metadata = search_results[0]
-    #     download_url = file_metadata.get("url")
-
-    #     if not download_url:
-    #         raise HTTPException(status_code=500, detail="Rubric file found but download URL is missing.")
-
-    #     response = requests.get(download_url)
-    #     response.raise_for_status()
-    #     return response.json()
-
-    # def _announce_rubric_upload(self, filename: str, size: int) -> Dict[str, Any]:
-    #     """Phase 1: Announce the file upload to Canvas."""
-    #     folder = self.get_or_create_folder('development')
-        
-    #     payload = {
-    #         'name': filename,
-    #         'size': size,
-    #         'content_type': 'application/json',
-    #         'parent_folder_id': folder['id'],
-    #         'published': False
-    #     }
-        
-    #     return self._request('post', '/files', data=payload)
-
-    # --- NEW GENERIC FILE MANAGEMENT FUNCTIONS ---
-    
     def upload_file(self, file_data: Dict[str, Any], assignment_id: int, filename: str, overwrite: bool = True) -> Dict[str, Any]:
         """
         Uploads a JSON file to the assignment-specific folder in Canvas.
         
-        File structure: development/assignmentID/filename.json
+        File structure: development/assignmentID/assignmentId_filename.json
         
         Logic:
-        - If overwrite=True: Deletes existing file before uploading new data (used for same grading session)
-        - If overwrite=False: Merges with existing file by appending new iteration (used for different grading sessions)
+        - If overwrite=True: Should be this for all non-audit files, and inter-iteration criteria merging 
+        - If overwrite=False: Merges with existing file by appending new iteration (only for audit files)
         
         Args:
             file_data: The JSON data to upload
@@ -85,67 +31,130 @@ class CanvasAPI:
             filename: The name of the file (without .json extension)
             overwrite: If True, deletes existing file; if False, merges with existing
         """
-        # Handle different upload strategies based on overwrite flag
-        if overwrite:
-            # OVERWRITE: Delete existing file first, then upload new data
+        appended_filename = f"{assignment_id}_{filename}.json"
+        print(f"[DEBUG] Uploading file: {appended_filename}")
+        
+        
+        if overwrite: 
             try:
-                existing_file = self.get_file(assignment_id, filename)
-                # If we can read the file, we need to find and delete it
-                search_term = f"{filename}.json"
+                print(f"[DEBUG] Overwrite mode - checking for existing file")
+
+                search_term = appended_filename
                 search_results = self._request('get', f"/files?search_term={search_term}")
+                print(f"[DEBUG] Found {len(search_results)} files to potentially delete")
                 
                 for file_meta in search_results:
-                    # Check if this is the file in our assignment folder
-                    if f"/{assignment_id}/" in file_meta.get('folder_path', '') or f"{assignment_id}_" in file_meta.get('display_name', ''):
+                    if f"/{assignment_id}/" in file_meta.get('folder_path', '') or appended_filename in file_meta.get('display_name', ''):
                         file_id = file_meta.get('id')
                         if file_id:
-                            self._request('delete', f"/files/{file_id}")
+                            print(f"[DEBUG] Deleting file ID: {file_id}")
+                            self._global_request('delete', f"/files/{file_id}")  # Need to use global req for files endpoint ~ bizarre, but how it works for files and folders
+                            print(f"[DEBUG] File deleted successfully")
                             break
                             
             except Exception as delete_error:
-                pass  # Silently handle delete errors
-        else:
-            # APPEND: Merge with existing data automatically (for new iterations)
+                print(f"[DEBUG] Delete error (continuing): {delete_error}")
+                pass 
+        else:                  # Append logic, only for audit files
             try:
                 existing_data = self.get_file(assignment_id, filename)
-                # Append new iteration to existing history
-                if 'history' in existing_data and 'history' in file_data:
-                    # Get the highest iteration number from existing data
-                    max_iteration = max([entry.get('iteration', 0) for entry in existing_data['history']], default=0)
+
+                if 'history' in existing_data and 'history' in file_data:   
+                    max_iteration = max([entry.get('iteration', 0) for entry in existing_data['history']], default=0)  # Highest (most recent) iteration number
                     
-                    # Set iteration number for new entry
                     for new_entry in file_data['history']:
                         new_entry['iteration'] = max_iteration + 1
                     
-                    # Append to existing history
                     existing_data['history'].extend(file_data['history'])
                     existing_data['currentStatus'] = file_data.get('currentStatus', existing_data.get('currentStatus'))
                     file_data = existing_data
                     
-                    # After appending, we still need to delete the old file to avoid duplicates
-                    search_term = f"{filename}.json"
+                    # After appending, we still need to delete the old file to avoid duplicates, since Canvas allows for them
+                    search_term = appended_filename
                     search_results = self._request('get', f"/files?search_term={search_term}")
                     
                     for file_meta in search_results:
-                        if f"/{assignment_id}/" in file_meta.get('folder_path', '') or f"{assignment_id}_" in file_meta.get('display_name', ''):
+                        if f"/{assignment_id}/" in file_meta.get('folder_path', '') or appended_filename in file_meta.get('display_name', ''):
                             file_id = file_meta.get('id')
                             if file_id:
-                                self._request('delete', f"/files/{file_id}")
+                                print(f"[DEBUG] Deleting old file ID: {file_id} after append")
+                                self._global_request('delete', f"/files/{file_id}")
+                                print(f"[DEBUG] Old file deleted successfully")
                                 break
+                else:
+                    print(f"[DEBUG] Non-audit file")
                                 
             except HTTPException as e:
-                # File doesn't exist, proceed with new file creation
                 pass
         
-        filename_with_ext = f"{filename}.json"
         json_bytes = json.dumps(file_data, indent=2).encode('utf-8')
 
-        upload_details = self._announce_file_upload(filename_with_ext, len(json_bytes), assignment_id)
+        upload_details = self._announce_file_upload(appended_filename, len(json_bytes), assignment_id)
         
         upload_response = self._execute_upload_to_url(
             upload_details['upload_url'],
             upload_details['upload_params'],
-            filename_with_ext,
+            appended_filename,
+            json_bytes
+        )
+        
+        return self._confirm_upload(upload_response)
+
+    def upload_root(self, file_data: Dict[str, Any], filename: str, overwrite: bool = True) -> Dict[str, Any]:
+        """
+        Uploads a JSON file to the development root folder in Canvas.
+        
+        File structure: development/filename.json (course-wide files)
+        
+        Args:
+            file_data: The JSON data to upload
+            filename: The name of the file (without .json extension)
+            overwrite: If True, deletes existing file; if False, creates new file
+        """
+        appended_filename = f"{filename}.json"
+        print(f"[DEBUG] Uploading root file: {appended_filename}")
+        
+        # Handle overwrite logic
+        if overwrite:
+            try:
+                print(f"[DEBUG] Overwrite mode - checking for existing root file")
+                search_term = appended_filename
+                search_results = self._request('get', f"/files?search_term={search_term}")
+                print(f"[DEBUG] Found {len(search_results)} files to potentially delete")
+                
+                for file_meta in search_results:
+                    # Check if file is in the development folder
+                    if "/development/" in file_meta.get('folder_path', '') and appended_filename in file_meta.get('display_name', ''):
+                        file_id = file_meta.get('id')
+                        if file_id:
+                            print(f"[DEBUG] Deleting root file ID: {file_id}")
+                            self._global_request('delete', f"/files/{file_id}")
+                            print(f"[DEBUG] Root file deleted successfully")
+                            break
+                            
+            except Exception as delete_error:
+                print(f"[DEBUG] Delete error (continuing): {delete_error}")
+                pass
+        
+        json_bytes = json.dumps(file_data, indent=2).encode('utf-8')
+
+        # Upload to development folder
+        development_folder = self.get_or_create_folder('development')
+        
+        payload = {
+            'name': appended_filename,
+            'size': len(json_bytes),
+            'content_type': 'application/json',
+            'parent_folder_id': development_folder['id'],
+            'published': False
+        }
+        
+        result = self._request('post', '/files', data=payload)
+        
+        upload_response = self._execute_upload_to_url(
+            result['upload_url'],
+            result['upload_params'],
+            appended_filename,
             json_bytes
         )
         
@@ -159,29 +168,64 @@ class CanvasAPI:
             assignment_id: The assignment ID
             filename: The name of the file (without .json extension)
         """
-        search_term = f"{filename}.json"
-        # Search within the assignment folder structure
+        appendedFilename = f"{assignment_id}_{filename}.json"
+        search_term = appendedFilename
+        print(f"[DEBUG] Searching for file: {search_term}")
+        
+
         search_results = self._request('get', f"/files?search_term={search_term}")
+        print(f"[DEBUG] Search returned {len(search_results)} results")
 
         if not search_results:
-            raise HTTPException(status_code=404, detail=f"File {filename}.json for assignment {assignment_id} not found.")
+            raise HTTPException(status_code=404, detail=f"File {appendedFilename} for assignment {assignment_id} and {filename} not found.")
 
-        # Filter results to find the one in the correct assignment folder
-        target_file = None
-        for file_meta in search_results:
-            # Check if file is in the correct assignment folder path
-            if f"/{assignment_id}/" in file_meta.get('folder_path', '') or f"{assignment_id}_" in file_meta.get('display_name', ''):
-                target_file = file_meta
-                break
-        
-        if not target_file:
-            # Fallback to first result if folder path matching fails
-            target_file = search_results[0]
+        # Since we have unique filenames, just take the first result
+        target_file = search_results[0]
+        print(f"[DEBUG] Using file: {target_file.get('display_name', 'unknown')} (ID: {target_file.get('id', 'unknown')})")
 
         download_url = target_file.get("url")
         if not download_url:
             raise HTTPException(status_code=500, detail="File found but download URL is missing.")
 
+        print(f"[DEBUG] Downloading from: {download_url}")
+        response = requests.get(download_url)
+        response.raise_for_status()
+        return response.json()
+
+    def get_root_file(self, filename: str) -> Dict[str, Any]:
+        """
+        Retrieves a JSON file from the development root folder.
+        
+        Args:
+            filename: The name of the file (without .json extension)
+        """
+        appended_filename = f"{filename}.json"
+        search_term = appended_filename
+        print(f"[DEBUG] Searching for root file: {search_term}")
+        
+        search_results = self._request('get', f"/files?search_term={search_term}")
+        print(f"[DEBUG] Search returned {len(search_results)} results")
+
+        if not search_results:
+            raise HTTPException(status_code=404, detail=f"Root file {appended_filename} not found.")
+
+        # Since there's only one threshold file per course, just use the first matching file
+        if len(search_results) == 1 and appended_filename in search_results[0].get('display_name', ''):
+            target_file = search_results[0]
+            print(f"[DEBUG] Found exactly one matching file: {target_file.get('display_name', 'unknown')}")
+        else:
+            print(f"[DEBUG] No matching file found. Available files:")
+            for file_meta in search_results:
+                print(f"[DEBUG] - {file_meta.get('display_name', 'unknown')}")
+            raise HTTPException(status_code=404, detail=f"Root file {appended_filename} not found.")
+
+        print(f"[DEBUG] Using root file: {target_file.get('display_name', 'unknown')} (ID: {target_file.get('id', 'unknown')})")
+
+        download_url = target_file.get("url")
+        if not download_url:
+            raise HTTPException(status_code=500, detail="Root file found but download URL is missing.")
+
+        print(f"[DEBUG] Downloading from: {download_url}")
         response = requests.get(download_url)
         response.raise_for_status()
         return response.json()
@@ -189,6 +233,7 @@ class CanvasAPI:
     def list_files_in_assignment_folder(self, assignment_id: int) -> List[Dict[str, Any]]:
         """
         Lists all files in the assignment-specific folder using search API.
+        Used mainly by approval counter endpoint, since it needs to check all audit files for an assignment
         
         Args:
             assignment_id: The assignment ID
@@ -196,36 +241,16 @@ class CanvasAPI:
         Returns:
             List of file metadata dictionaries
         """
-        # Get the assignment folder first
+
         assignment_folder = self.get_or_create_assignment_folder(assignment_id)
         
-        # Try to list files directly from the assignment folder
         try:
-            files = self._request('get', f"/folders/{assignment_folder['id']}/files")
+            files = self._global_request('get', f"/folders/{assignment_folder['id']}/files")
             print(f"[DEBUG] Direct folder listing returned {len(files)} files\n\n")
             return files
         except Exception as e:
             print(f"[DEBUG] Direct folder listing failed: {e}\n\n")
-            
-            # Fallback: Use search API with folder-specific search
-            # Search for files in the specific assignment folder using folder_id
             search_results = self._request('get', f"/files?search_term=.json&folder_id={assignment_folder['id']}")
-            
-            # FALLBACK CODE (COMMENTED OUT) - works but checks each JSON file one by one and checks its folder, would be bad to scale up when we have a bunch of assignments and 100+ students (files) in each
-            # # Fallback: Use search API and filter by folder_id
-            # search_results = self._request('get', f"/files?search_term=.json")
-            # 
-            # # Filter results to find files in the correct assignment folder
-            # assignment_files = []
-            # for file_meta in search_results:
-            #     folder_id = file_meta.get('folder_id')
-            #     filename = file_meta.get('display_name', '')
-            #     
-            #     # Check if folder that file is in, is the same folder of the assignment we want
-            #     if folder_id == assignment_folder['id']:
-            #         assignment_files.append(file_meta)
-            # 
-            # return assignment_files
             
             return search_results
 
@@ -237,38 +262,35 @@ class CanvasAPI:
             assignment_id: The assignment ID for the folder name
         """
         
-        # First ensure development folder exists
-        dev_folder = self.get_or_create_folder('development')
+        dev_folder = self.get_or_create_folder('development')  # Ensure development folder exists
         
-        # Check if assignment folder already exists within development
         assignment_folder_name = str(assignment_id)
-        assignment_folder = self.get_folder_by_name_in_parent(assignment_folder_name, dev_folder['id'])
+        assignment_folder = self.get_folder_by_name_in_parent(assignment_folder_name, dev_folder['id'])         # Check if assignment folder already exists within development
         
         if assignment_folder:
             return assignment_folder
         
-        # Create assignment folder within development folder
-        new_folder = self.create_folder_in_parent(assignment_folder_name, dev_folder['id'])
+        new_folder = self.create_folder_in_parent(assignment_folder_name, dev_folder['id'])   # Else we create one
         return new_folder
 
     def get_folder_by_name_in_parent(self, folder_name: str, parent_folder_id: int) -> Optional[Dict[str, Any]]:
         """Find a folder by name within a specific parent folder."""
         
-        # Try getting subfolders using different approaches
         try:
-            # Approach 1: Try the subfolders endpoint
+            # First we try subfolders endpoint
             url_path = f"/folders/{parent_folder_id}/folders"
             subfolders = self._request('get', url_path)
             
             for folder in subfolders:
                 if folder.get('name') == folder_name:
+                    print(f"[DEBUG] way 1 works")
                     return folder
             
             return None
             
         except requests.exceptions.HTTPError as e:
             if e.response.status_code == 404:
-                # Approach 2: Try getting all folders and filter by parent
+                # Then try getting all folders and filter by parents
                 try:
                     all_folders = self._request('get', '/folders')
                     matching_folders = [f for f in all_folders if f.get('parent_folder_id') == parent_folder_id]
@@ -282,7 +304,6 @@ class CanvasAPI:
                 except Exception as alt_e:
                     return None
             else:
-                # Other HTTP errors should still be raised
                 raise
         except Exception as e:
             raise
@@ -365,8 +386,9 @@ class CanvasAPI:
         }
         return self._request('post', '/folders', data=data)
 
-    # --- Private Helper Methods ---
 
+
+    # --- Private Helper Methods ---
     def _request(self, method: str, endpoint: str, **kwargs) -> Any:
         """
         Makes a request to a Canvas API endpoint.
@@ -374,6 +396,26 @@ class CanvasAPI:
         Ensures the Authorization header cannot be overwritten.
         """
         url = self.base_url + endpoint
+        headers = kwargs.pop('headers', {})
+        headers.update(self._get_headers())
+
+        response = requests.request(method, url, headers=headers, **kwargs)
+        response.raise_for_status()
+
+        if response.status_code == 204: 
+            return response
+        
+        try:
+            return response.json()
+        except json.JSONDecodeError:
+            return response.text
+
+    def _global_request(self, method: str, endpoint: str, **kwargs) -> Any:
+        """
+        Makes a request to a global Canvas API endpoint (not course-specific).
+        Handles URL construction, headers, and error checking.
+        """
+        url = f"https://canvas.sfu.ca/api/v1{endpoint}"
         headers = kwargs.pop('headers', {})
         headers.update(self._get_headers())
 

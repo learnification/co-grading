@@ -36,6 +36,24 @@ class ApprovalRetrievalRequest(BaseModel): # For approval-retrieval
     assignmentId: int
     courseId: int
 
+class AutogradeToggleRequest(BaseModel):
+    assignmentId: int
+    courseId: int
+    graderId: int
+
+class AutogradeCheckRequest(BaseModel):
+    assignmentId: int
+    courseId: int
+
+class AutogradeThresholdRequest(BaseModel):
+    courseId: int
+    graderId: int
+    threshold: int
+
+class ThresholdCheckRequest(BaseModel):
+    courseId: int
+ 
+
 class AIFeedbackStatus(str, Enum):
     SUCCESS = "SUCCESS"
     WARNING = "WARNING"

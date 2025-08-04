@@ -246,22 +246,16 @@ async def get_autograde_setting(
     - JSON content of the autograde settings file
     """
     try:
-        import time
-        start_time = time.time()
-        
         domain = urlparse(x_canvas_base_url).netloc
-        print(f"[DEBUG] get-autograde-setting: Domain parsed in {time.time() - start_time:.3f}s")
 
         canvas_api = CanvasAPI(
             api_token=x_canvas_token,
             domain=domain,
             course_id=request.courseId
         )
-        print(f"[DEBUG] get-autograde-setting: CanvasAPI created in {time.time() - start_time:.3f}s")
         
         # Get the autograde settings file
         autograde_data = canvas_api.get_file(request.assignmentId, "autograde_enabled")
-        print(f"[DEBUG] get-autograde-setting: File retrieved in {time.time() - start_time:.3f}s")
         
         return autograde_data
         
@@ -288,22 +282,16 @@ async def get_threshold(
     - JSON content of the threshold file
     """
     try:
-        import time
-        start_time = time.time()
-        
         domain = urlparse(x_canvas_base_url).netloc
-        print(f"[DEBUG] get-threshold: Domain parsed in {time.time() - start_time:.3f}s")
 
         canvas_api = CanvasAPI(
             api_token=x_canvas_token,
             domain=domain,
             course_id=request.courseId
         )
-        print(f"[DEBUG] get-threshold: CanvasAPI created in {time.time() - start_time:.3f}s")
         
         # Get the threshold file (course-wide)
         threshold_data = canvas_api.get_root_file("autograde_threshold")
-        print(f"[DEBUG] get-threshold: File retrieved in {time.time() - start_time:.3f}s")
         
         return threshold_data
         

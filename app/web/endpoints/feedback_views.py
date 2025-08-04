@@ -220,30 +220,20 @@ async def get_audit_file(
     - currentStatus: Latest overall status (SUCCESS/FAILURE)
     - latestIteration: Most recent audit iteration with full details
     """
-    print(f"[DEBUG] Called audit-retrieval endpoint for assignment {request.assignmentId}, user {request.userId}")
     try:
-        import time
-        start_time = time.time()
-        
         domain = urlparse(x_canvas_base_url).netloc
-        print(f"[DEBUG] audit-retrieval: Domain parsed in {time.time() - start_time:.3f}s")
 
         canvas_api = CanvasAPI(
             api_token=x_canvas_token,
             domain=domain,
             course_id=request.courseId
         )
-        print(f"[DEBUG] audit-retrieval: CanvasAPI created in {time.time() - start_time:.3f}s")
 
         audit_data = canvas_api.get_file(request.assignmentId, str(request.userId))
-        print(f"[DEBUG] audit-retrieval: File retrieved in {time.time() - start_time:.3f}s")
-        print(f"[DEBUG] Successfully retrieved audit data")
 
         current_status = audit_data.get("currentStatus", "SUCCESS")
-        print(f"[DEBUG] Current status: {current_status}")
 
         history = audit_data.get("history", [])
-        print(f"[DEBUG] History length: {len(history)}")
         if not history:
             return {
                 "currentStatus": current_status,
@@ -258,12 +248,10 @@ async def get_audit_file(
             "currentStatus": current_status,
             "latestIteration": latest_iteration
         }
-        print(f"[DEBUG] Returning result for audit-retrieval")
         
         return result
 
     except Exception as e:
-        print(f"[DEBUG] Exception in audit-retrieval: {str(e)}")
         return {
             "currentStatus": "SUCCESS",
             "latestIteration": None,
@@ -289,7 +277,6 @@ async def get_approvals(
     - approvals: Count of submissions with currentStatus = "SUCCESS"
     - total: Total count of all submission files found
     """
-    print(f"[DEBUG] Called approval-retrieval endpoint for assignment {request.assignmentId}")
     import re
     
     try:
@@ -327,8 +314,7 @@ async def get_approvals(
                     
             except Exception as e:
                 continue
-        
-        print(f"[DEBUG] Final result: approvals={approval_count}, total={total_count}\n\n")
+
         return {
             "approvals": approval_count,
             "total": total_count

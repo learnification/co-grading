@@ -86,14 +86,26 @@ def load_pdf(pdf_path: Path, extract_text: bool = False):
     """
     Loads the PDF from the specified path.
 
-    If `extract_text` is True, returns the concatenated text content.
+    If `extract_text` is True, returns the concatenated text content using PyMuPDF.
     Otherwise, returns the PyPDFLoader instance for further processing.
     """
-    loader = PyPDFLoader(str(pdf_path))
     if extract_text:
-        documents = loader.load()
-        full_text = "\n".join(doc.page_content for doc in documents)
-        return full_text
+        try:
+            doc = fitz.open(str(pdf_path))
+            full_text = ""
+            for page in doc:
+                full_text += page.get_text() + "\n"
+            doc.close()
+            return full_text.strip()
+        except Exception as e:
+            print(f"PyMuPDF extraction failed, falling back to PyPDFLoader: {e}")
+            
+            loader = PyPDFLoader(str(pdf_path))
+            documents = loader.load()
+            return "\n".join(doc.page_content for doc in documents)
+    
+    # For non-text extraction, return PyPDFLoader as before
+    loader = PyPDFLoader(str(pdf_path))
     return loader
 
 

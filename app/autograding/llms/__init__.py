@@ -1,5 +1,7 @@
 from functools import partial
-from .ollama import build_llm, build_openrouter_llm
+
+from pydantic import SecretStr
+from .ollama import build_llm, build_openrouter_llm, build_openai_gpt4_mini
 import os
 
 
@@ -24,5 +26,25 @@ def get_llm_map():
             "llama3.2:3b-instruct-fp16": partial(build_llm, model="llama3.2:3b-instruct-fp16"),
         }
 
+def get_gpt_map():
+    """Return the OpenAI GPT models map."""
+    return {
+        "gpt-4.1-mini-2025-04-14": build_openai_gpt4_mini
+    }
+
+def build_llm_for_task(llm_name: str, openai_token: SecretStr = None, streaming: bool = False):
+    """Centralized LLM factory that handles token logic"""
+
+    if openai_token and llm_name in llm_map_gpt:
+        builder = llm_map_gpt[llm_name]
+        return builder(streaming=streaming, api_key=openai_token.get_secret_value())
+    else:
+        builder = llm_map[llm_name]
+        return builder(streaming=streaming)
+
+def select_llm_map(openai_token: SecretStr = None):
+    """Select the appropriate LLM map based on whether OpenAI token is provided."""
+    return llm_map_gpt if openai_token else llm_map
 
 llm_map = get_llm_map()
+llm_map_gpt = get_gpt_map()

@@ -39,7 +39,7 @@ class ApprovalRetrievalRequest(BaseModel): # For approval-retrieval
 class AutogradeToggleRequest(BaseModel):
     assignmentId: int
     courseId: int
-    graderId: int
+    graderName: str
 
 class AutogradeCheckRequest(BaseModel):
     assignmentId: int
@@ -47,7 +47,7 @@ class AutogradeCheckRequest(BaseModel):
 
 class AutogradeThresholdRequest(BaseModel):
     courseId: int
-    graderId: int
+    graderName: str
     threshold: int
 
 class ThresholdCheckRequest(BaseModel):

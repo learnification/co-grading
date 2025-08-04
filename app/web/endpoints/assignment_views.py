@@ -128,7 +128,7 @@ async def toggle_autograde(
     Args:
     - assignmentId: Canvas assignment ID
     - courseId: Canvas course ID  
-    - graderId: Canvas grader ID
+    - graderName: Name of the grader toggling the setting
     
     Returns:
     - Success message with current enabled status
@@ -142,14 +142,6 @@ async def toggle_autograde(
             course_id=request.courseId
         )
         
-
-        grader_name = "Unknown Grader"
-        try:
-            grader_data = canvas_api._global_request('get', f"/users/{request.graderId}")
-            grader_name = grader_data.get("name", "Unknown Grader")
-        except Exception as e:
-            logger.error(f"Could not get grader name: {e}")
-        
         try:
             existing_data = canvas_api.get_file(request.assignmentId, "autograde_enabled")
             current_enabled = existing_data.get("enabled", False)      # If doesn't catch error at this point, file exists
@@ -157,7 +149,7 @@ async def toggle_autograde(
             
             # Update the file
             updated_data = {
-                "set-by": grader_name,
+                "set-by": request.graderName,
                 "enabled": new_enabled
             }
             
@@ -171,7 +163,7 @@ async def toggle_autograde(
         except Exception as e:
             # File doesn't exist, create it with enabled=False
             new_data = {
-                "set-by": grader_name,
+                "set-by": request.graderName,
                 "enabled": False
             }
             
@@ -200,7 +192,7 @@ async def set_threshold(
     
     Args:
     - courseId: Canvas course ID
-    - graderId: Canvas grader ID
+    - graderName: Name of the grader setting the threshold
     - threshold: Threshold value to set
     
     Returns:
@@ -215,17 +207,11 @@ async def set_threshold(
             course_id=request.courseId
         )
         
-        # Get grader name
-        grader_name = "Unknown Grader"
-        try:
-            grader_data = canvas_api._global_request('get', f"/users/{request.graderId}")
-            grader_name = grader_data.get("name", "Unknown Grader")
-        except Exception as e:
-            logger.error(f"Could not get grader name: {e}")
+
         
         # Create/update threshold file (course-wide)
         threshold_data = {
-            "set-by": grader_name,
+            "set-by": request.graderName,
             "threshold": request.threshold
         }
         
@@ -260,16 +246,22 @@ async def get_autograde_setting(
     - JSON content of the autograde settings file
     """
     try:
+        import time
+        start_time = time.time()
+        
         domain = urlparse(x_canvas_base_url).netloc
+        print(f"[DEBUG] get-autograde-setting: Domain parsed in {time.time() - start_time:.3f}s")
 
         canvas_api = CanvasAPI(
             api_token=x_canvas_token,
             domain=domain,
             course_id=request.courseId
         )
+        print(f"[DEBUG] get-autograde-setting: CanvasAPI created in {time.time() - start_time:.3f}s")
         
         # Get the autograde settings file
         autograde_data = canvas_api.get_file(request.assignmentId, "autograde_enabled")
+        print(f"[DEBUG] get-autograde-setting: File retrieved in {time.time() - start_time:.3f}s")
         
         return autograde_data
         
@@ -296,16 +288,22 @@ async def get_threshold(
     - JSON content of the threshold file
     """
     try:
+        import time
+        start_time = time.time()
+        
         domain = urlparse(x_canvas_base_url).netloc
+        print(f"[DEBUG] get-threshold: Domain parsed in {time.time() - start_time:.3f}s")
 
         canvas_api = CanvasAPI(
             api_token=x_canvas_token,
             domain=domain,
             course_id=request.courseId
         )
+        print(f"[DEBUG] get-threshold: CanvasAPI created in {time.time() - start_time:.3f}s")
         
         # Get the threshold file (course-wide)
         threshold_data = canvas_api.get_root_file("autograde_threshold")
+        print(f"[DEBUG] get-threshold: File retrieved in {time.time() - start_time:.3f}s")
         
         return threshold_data
         

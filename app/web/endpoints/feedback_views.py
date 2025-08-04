@@ -222,15 +222,21 @@ async def get_audit_file(
     """
     print(f"[DEBUG] Called audit-retrieval endpoint for assignment {request.assignmentId}, user {request.userId}")
     try:
+        import time
+        start_time = time.time()
+        
         domain = urlparse(x_canvas_base_url).netloc
+        print(f"[DEBUG] audit-retrieval: Domain parsed in {time.time() - start_time:.3f}s")
 
         canvas_api = CanvasAPI(
             api_token=x_canvas_token,
             domain=domain,
             course_id=request.courseId
         )
+        print(f"[DEBUG] audit-retrieval: CanvasAPI created in {time.time() - start_time:.3f}s")
 
         audit_data = canvas_api.get_file(request.assignmentId, str(request.userId))
+        print(f"[DEBUG] audit-retrieval: File retrieved in {time.time() - start_time:.3f}s")
         print(f"[DEBUG] Successfully retrieved audit data")
 
         current_status = audit_data.get("currentStatus", "SUCCESS")

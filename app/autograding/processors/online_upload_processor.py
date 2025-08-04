@@ -20,7 +20,7 @@ class OnlineUploadProcessor(SubmissionProcessor):
             sub_dirs = [str(submission.assignment_id)]
 
             if attachment.content_type == "application/pdf":
-                pdf_path = download_pdf(attachment.url, filename=filename, sub_dirs=sub_dirs)
+                pdf_path = download_pdf(attachment.url, filename=filename, sub_dirs=sub_dirs, apply_data_masking=False) # TODO: Data Masking Fix, then can turn of.
                 content += load_pdf(pdf_path, extract_text=True)
 
             elif attachment.content_type == "text/plain":

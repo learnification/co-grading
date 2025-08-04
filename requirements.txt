@@ -178,3 +178,4 @@ transformers==4.46.3
 PyMuPDF==1.24.14
 thinc>=8.1.0,<8.4.0
 spacy>=3.0
+torch==2.5.1

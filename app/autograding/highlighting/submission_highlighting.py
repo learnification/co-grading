@@ -1,10 +1,10 @@
 import fitz  # PyMuPDF
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 from pydantic import SecretStr
 
 from app.autograding.processors import ProcessorFactory
-#from app.autograding.highlighting.highlight_agent import find_criterion_violations
+from app.autograding.highlighting.highlight_agent import find_criterion_violations
 from app.autograding.highlighting.models import CriterionHighlights
 from app.web.db.models import Submission, CriterionInstructionIDs
 from app.web.utils import logger
@@ -162,8 +162,7 @@ def highlight_document_violations(
     for criterion in guideline:
         logger.info(f"Processing criterion: {criterion.criterion}")
         
-        #violations = find_criterion_violations(content, criterion, openai_key) -> TODO: Next Feature
-        violations = ['temp']
+        violations = find_criterion_violations(content, criterion, openai_key)
 
         output_path = Path(f"test_{criterion.criterion}.pdf")
         highlighting_result = highlight_violations_in_pdf(

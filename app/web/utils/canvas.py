@@ -35,17 +35,17 @@ class CanvasAPI:
         
         if overwrite: 
             try:
-                search_term = appended_filename
-                search_results = self._request('get', f"/files?search_term={search_term}")
+                # Get file metadata including file_id for deletion
+                file_metadata = self.get_file(assignment_id, filename, return_id=True)
+                file_id = file_metadata.get('file_id')
                 
-                for file_meta in search_results:
-                    if f"/{assignment_id}/" in file_meta.get('folder_path', '') or appended_filename in file_meta.get('display_name', ''):
-                        file_id = file_meta.get('id')
-                        if file_id:
-                            self._global_request('delete', f"/files/{file_id}")  # Need to use global req for files endpoint ~ bizarre, but how it works for files and folders
-                            break
-                            
+                if file_id:
+                    self._global_request('delete', f"/files/{file_id}")
+            except HTTPException:
+                # File doesn't exist, which is fine for overwrite=True
+                pass
             except Exception as delete_error:
+                # Other errors, but we'll continue anyway
                 pass 
         else:                  # Append logic, only for audit files
             try:
@@ -62,15 +62,14 @@ class CanvasAPI:
                     file_data = existing_data
                     
                     # After appending, we still need to delete the old file to avoid duplicates, since Canvas allows for them
-                    search_term = appended_filename
-                    search_results = self._request('get', f"/files?search_term={search_term}")
-                    
-                    for file_meta in search_results:
-                        if f"/{assignment_id}/" in file_meta.get('folder_path', '') or appended_filename in file_meta.get('display_name', ''):
-                            file_id = file_meta.get('id')
-                            if file_id:
-                                self._global_request('delete', f"/files/{file_id}")
-                                break
+                    try:
+                        file_metadata = self.get_file(assignment_id, filename, return_id=True)
+                        file_id = file_metadata.get('file_id')
+                        if file_id:
+                            self._global_request('delete', f"/files/{file_id}")
+                    except HTTPException:
+                        # File doesn't exist, which is fine
+                        pass
                                 
             except HTTPException as e:
                 pass
@@ -103,18 +102,16 @@ class CanvasAPI:
         # Handle overwrite logic
         if overwrite:
             try:
-                search_term = appended_filename
-                search_results = self._request('get', f"/files?search_term={search_term}")
-                
-                for file_meta in search_results:
-                    # Check if file is in the development folder
-                    if "/development/" in file_meta.get('folder_path', '') and appended_filename in file_meta.get('display_name', ''):
-                        file_id = file_meta.get('id')
-                        if file_id:
-                            self._global_request('delete', f"/files/{file_id}")
-                            break
-                            
-            except Exception as delete_error:   
+                # Get file metadata including file_id for deletion
+                file_metadata = self.get_root_file(filename, return_id=True)
+                file_id = file_metadata.get('file_id')
+                if file_id:
+                    self._global_request('delete', f"/files/{file_id}")
+            except HTTPException:
+                # File doesn't exist, which is fine for overwrite=True
+                pass
+            except Exception as delete_error:
+                # Other errors, but we'll continue anyway
                 pass
         
         json_bytes = json.dumps(file_data, indent=2).encode('utf-8')
@@ -141,26 +138,49 @@ class CanvasAPI:
         
         return self._confirm_upload(upload_response)
 
-    def get_file(self, assignment_id: int, filename: str) -> Dict[str, Any]:
+    def _search_file(self, search_term: str, folder_id: Optional[int] = None, per_page: int = 1) -> List[Dict[str, Any]]:
+        """
+        Generic file search method that can be reused across the codebase.
+        
+        Args:
+            search_term: The search term to look for
+            folder_id: Optional folder ID to limit search to specific folder
+            per_page: Number of results to return (default 1 for single file searches)
+            
+        Returns:
+            List of file metadata dictionaries
+        """
+        endpoint = f"/files?search_term={search_term}&per_page={per_page}"
+        if folder_id:
+            endpoint += f"&folder_id={folder_id}"
+        
+        return self._request('get', endpoint)
+
+    def get_file(self, assignment_id: int, filename: str, return_id: bool = False) -> Dict[str, Any]:
         """
         Retrieves a JSON file from the assignment-specific folder.
         
         Args:
             assignment_id: The assignment ID
             filename: The name of the file (without .json extension)
+            return_id: If True, returns dict with 'data' and 'file_id', otherwise returns just the data
+            
+        Returns:
+            If return_id=True: {"data": file_data, "file_id": file_id}
+            If return_id=False: just file_data - Is default arg, so existing calls still work.
         """
 
         appendedFilename = f"{assignment_id}_{filename}.json"
-        search_term = appendedFilename
-        print(f"[DEBUG] Searching for file: {search_term}")
+        print(f"[DEBUG] Searching for file: {appendedFilename}")
         
-        search_results = self._request('get', f"/files?search_term={search_term}&per_page=1")
+        search_results = self._search_file(appendedFilename)
 
         if not search_results:
             raise HTTPException(status_code=404, detail=f"File {appendedFilename} for assignment {assignment_id} and {filename} not found.")
 
         # Since we have unique filenames, just take the first result
         target_file = search_results[0]
+        file_id = target_file.get('id')
         
         # Fallback to download URL if content not available
         download_url = target_file.get("url")
@@ -169,19 +189,28 @@ class CanvasAPI:
 
         response = requests.get(download_url)
         response.raise_for_status()
-        return response.json()
+        file_data = response.json()
+        
+        if return_id:
+            return {"data": file_data, "file_id": file_id}
+        else:
+            return file_data
 
-    def get_root_file(self, filename: str) -> Dict[str, Any]:
+    def get_root_file(self, filename: str, return_id: bool = False) -> Dict[str, Any]:
         """
         Retrieves a JSON file from the development root folder.
         
         Args:
             filename: The name of the file (without .json extension)
+            return_id: If True, returns dict with 'data' and 'file_id', otherwise returns just the data
+            
+        Returns:
+            If return_id=True: {"data": file_data, "file_id": file_id}
+            If return_id=False: file_data (backward compatible)
         """
         appended_filename = f"{filename}.json"
-        search_term = appended_filename
         
-        search_results = self._request('get', f"/files?search_term={search_term}&per_page=1")
+        search_results = self._search_file(appended_filename)
 
         if not search_results:
             raise HTTPException(status_code=404, detail=f"Root file {appended_filename} not found.")
@@ -192,6 +221,8 @@ class CanvasAPI:
         else:
             raise HTTPException(status_code=404, detail=f"Root file {appended_filename} not found.")
 
+        file_id = target_file.get('id')
+        
         # Fallback to download URL if content not available
         download_url = target_file.get("url")
         if not download_url:
@@ -199,7 +230,12 @@ class CanvasAPI:
 
         response = requests.get(download_url)
         response.raise_for_status()
-        return response.json()
+        file_data = response.json()
+        
+        if return_id:
+            return {"data": file_data, "file_id": file_id}
+        else:
+            return file_data
 
     def list_files_in_assignment_folder(self, assignment_id: int) -> List[Dict[str, Any]]:
         """
@@ -219,7 +255,7 @@ class CanvasAPI:
             files = self._global_request('get', f"/folders/{assignment_folder['id']}/files")
             return files
         except Exception as e:
-            search_results = self._request('get', f"/files?search_term=.json&folder_id={assignment_folder['id']}")
+            search_results = self._search_file(".json", folder_id=assignment_folder['id'], per_page=100)
             
             return search_results
 

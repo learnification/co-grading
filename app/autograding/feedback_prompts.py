@@ -89,11 +89,9 @@ Instructions:
 
 Remember: For high scores (80%+), brief but specific acknowledgment of correct work should easily earn SUCCESS. Only truly generic praise like "Good job" should earn WARNING for high scores. A 30% score requires extensive detail to avoid FAILURE.
 
-Your response should be in the following JSON format:
-{{
-  "status": "SUCCESS" | "WARNING" | "FAILURE",
-  "feedback": "Your detailed feedback here."
-}}"""
+The response will be parsed into a AIFeedback Pydantic model with:
+- status: One of "SUCCESS", "WARNING", or "FAILURE"
+- feedback: A string containing your detailed feedback for the human grader"""
 
     user_content = f"""Rubric Criterion:
 Name: {rubric_criterion.description}
@@ -113,7 +111,6 @@ Comments: "{rubric_assessment.comments}"""
     ]
 
 
-## Future prompt improvements:
 
 """
 

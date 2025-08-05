@@ -2,7 +2,7 @@ from typing import List, Optional
 from pydantic import BaseModel, Field, RootModel, SecretStr
 from app.web.db.models import RubricCriterion
 from app.web.db.models.canvas import Assignment
-
+from enum import Enum
 
 class Assignment(BaseModel):
     name: str = Field(..., description="Name of the assignment")

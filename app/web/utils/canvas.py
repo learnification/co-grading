@@ -33,21 +33,11 @@ class CanvasAPI:
         """
         appended_filename = f"{assignment_id}_{filename}.json"
         
-        if overwrite: 
-            try:
-                # Get file metadata including file_id for deletion
-                file_metadata = self.get_file(assignment_id, filename, return_id=True)
-                file_id = file_metadata.get('file_id')
-                
-                if file_id:
-                    self._global_request('delete', f"/files/{file_id}")
-            except HTTPException:
-                # File doesn't exist, which is fine for overwrite=True
-                pass
-            except Exception as delete_error:
-                # Other errors, but we'll continue anyway
-                pass 
-        else:                  # Append logic, only for audit files
+        if overwrite:
+            # Canvas automatically overwrites, so we just upload the new data
+            pass
+        else:
+            # Merge with existing data
             try:
                 existing_data = self.get_file(assignment_id, filename)
 
@@ -60,18 +50,9 @@ class CanvasAPI:
                     existing_data['history'].extend(file_data['history'])
                     existing_data['currentStatus'] = file_data.get('currentStatus', existing_data.get('currentStatus'))
                     file_data = existing_data
-                    
-                    # After appending, we still need to delete the old file to avoid duplicates, since Canvas allows for them
-                    try:
-                        file_metadata = self.get_file(assignment_id, filename, return_id=True)
-                        file_id = file_metadata.get('file_id')
-                        if file_id:
-                            self._global_request('delete', f"/files/{file_id}")
-                    except HTTPException:
-                        # File doesn't exist, which is fine
-                        pass
-                                
+                            
             except HTTPException as e:
+                # File doesn't exist, which is fine - just upload the new data
                 pass
         
         json_bytes = json.dumps(file_data, indent=2).encode('utf-8')
@@ -87,7 +68,7 @@ class CanvasAPI:
         
         return self._confirm_upload(upload_response)
 
-    def upload_root(self, file_data: Dict[str, Any], filename: str, overwrite: bool = True) -> Dict[str, Any]:
+    def upload_root(self, file_data: Dict[str, Any], filename: str) -> Dict[str, Any]:
         """
         Uploads a JSON file to the development root folder in Canvas.
         
@@ -96,23 +77,8 @@ class CanvasAPI:
         Args:
             file_data: The JSON data to upload
             filename: The name of the file (without .json extension)
-            overwrite: If True, deletes existing file; if False, creates new file
         """
         appended_filename = f"{filename}.json"
-        # Handle overwrite logic
-        if overwrite:
-            try:
-                # Get file metadata including file_id for deletion
-                file_metadata = self.get_root_file(filename, return_id=True)
-                file_id = file_metadata.get('file_id')
-                if file_id:
-                    self._global_request('delete', f"/files/{file_id}")
-            except HTTPException:
-                # File doesn't exist, which is fine for overwrite=True
-                pass
-            except Exception as delete_error:
-                # Other errors, but we'll continue anyway
-                pass
         
         json_bytes = json.dumps(file_data, indent=2).encode('utf-8')
 

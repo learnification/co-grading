@@ -167,7 +167,7 @@ async def toggle_autograde(
                 "enabled": False
             }
             
-            canvas_api.upload_file(new_data, request.assignmentId, "autograde_enabled", overwrite=True)
+            canvas_api.upload_file(new_data, request.assignmentId, "autograde_enabled")
             
             return {
                 "message": "Autograde settings file created and disabled",

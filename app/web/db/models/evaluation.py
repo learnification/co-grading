@@ -88,3 +88,14 @@ class UpdateGuidelineRequest(BaseModel):
     assignment: Assignment
     guideline: List[CriterionInstructionIDs]
     baseURL: str
+
+class CanvasGuidelineResponse(BaseModel):
+    guideline: List[CriterionInstructionIDs] = Field(
+        description="List of criterion instructions from Canvas"
+    )
+
+class HighlightViolationsRequest(BaseModel):
+    course_id: int
+    submission: Submission
+    baseURL: str
+    guideline: List[CriterionInstructionIDs]

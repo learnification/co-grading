@@ -422,7 +422,7 @@ class CanvasAPI:
         
     def _execute_upload_to_url(self, upload_url: str, params: Dict[str, Any], filename: str, data: bytes) -> requests.Response:
         """Phase 2: Upload the file data to the URL provided by Canvas."""
-        files = {'file': (filename, BytesIO(data), 'application/json')}
+        files = {'file': (filename, BytesIO(data), content_type)}
         response = requests.post(upload_url, data=params, files=files)
         response.raise_for_status()
         return response

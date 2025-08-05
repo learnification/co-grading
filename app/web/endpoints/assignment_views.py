@@ -1,13 +1,12 @@
 from app.web.db.models.evaluation import AutogradeThresholdRequest, AutogradeToggleRequest, AutogradeCheckRequest, ThresholdCheckRequest
 from celery.result import AsyncResult
 from app.celery import celery_app
-from fastapi import APIRouter, Header, HTTPException
-from app.web.db.models import RequestGradingDto, GenerateGuidelineRequest, UpdateGuidelineRequest
+from fastapi import APIRouter, Header
+from app.web.db.models import RequestGradingDto
 from app.web.tasks import schedule_evaluation
-from app.web.utils import logger, CanvasAPI
+from app.web.utils import logger
 from typing import Optional
 from pydantic import SecretStr
-from app.autograding.agents.rubric_agent import create_rubric_guideline
 
 router = APIRouter()
 
@@ -45,71 +44,6 @@ def get_task_status(task_id: str):
         "traceback": ("Failed to generate feedback." if task_result.status == "FAILURE" else None),
     }
     return response
-
-
-@router.post("/generate_guideline", response_model=dict)
-def generate_guideline(
-    request: GenerateGuidelineRequest,
-    x_canvas_token: SecretStr = Header(..., alias="X-Canvas-Token"),
-    x_user_openai_key: Optional[SecretStr] = Header(None, alias="X-User-OpenAI-Key")
-):
-    request_data = request.model_dump(by_alias=True)
-    assignment_id = request_data["assignment"]["id"]
-    course_id = request_data["assignment"]["course_id"]
-    try:
-        logger.info(f"assignment: {request.assignment}")
-        canvas_api = CanvasAPI(x_canvas_token, request.baseURL, course_id)
-        result = create_rubric_guideline(request.assignment, x_user_openai_key)
-        canvas_api.upload_rubric(result, assignment_id)
-        return {"generated_guideline": result}
-    except Exception as e:
-        logger.error(f"Error in generate_guideline: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.put("/update_guideline", response_model=dict)
-def update_generated_guideline(
-    request: UpdateGuidelineRequest,
-    x_canvas_token: SecretStr = Header(..., alias="X-Canvas-Token"),
-):
-    request_data = request.model_dump(by_alias=True)
-    assignment_id = request_data["assignment"]["id"]
-    course_id = request_data["assignment"]["course_id"]
-    guideline = request_data["guideline"]
-    try:
-        canvas_api = CanvasAPI(x_canvas_token, request.baseURL, course_id)
-        updated = canvas_api.upload_rubric(guideline, assignment_id)
-        return {"updated_guideline": updated}
-    except Exception as e:
-        logger.error(f"Error in update_generated_guideline: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.get(
-    "/guidelines/{course_id}/{assignment_id}", response_model=dict
-)
-def get_guideline(
-    course_id: int,
-    assignment_id: int,
-    base_url: str,
-    x_canvas_token: SecretStr = Header(..., alias="X-Canvas-Token"),
-):
-    """
-    Retrieve the rubric/guideline for a specific assignment from Canvas.
-    """
-    try:
-        logger.info(
-            f"Received request to get guideline for course_id: {course_id}, assignment_id: {assignment_id}"
-        )
-        canvas_api = CanvasAPI(
-            x_canvas_token, base_url, course_id
-        )
-        guideline = canvas_api.get_rubric(assignment_id)
-        return {"guideline": guideline}
-    except Exception as e:
-        logger.error(f"Error in get_guideline: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
 
 @router.post("/toggle-autograde")
 async def toggle_autograde(

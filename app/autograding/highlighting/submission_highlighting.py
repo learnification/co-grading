@@ -1,8 +1,8 @@
 import fitz  # PyMuPDF
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 from pydantic import SecretStr
-
+from app.web.utils.canvas import CanvasAPI
 from app.autograding.processors import ProcessorFactory
 from app.autograding.highlighting.highlight_agent import find_criterion_violations
 from app.autograding.highlighting.models import CriterionHighlights
@@ -57,19 +57,10 @@ def find_cross_page_text(page, next_page, violating_text):
 
 def highlight_violations_in_pdf(
     pdf_path: Path,
-    criterion_highlights: CriterionHighlights,
-    output_path: Path
-) -> dict:
+    criterion_highlights: CriterionHighlights
+) -> Dict[str, Any]:
     
-    """PDF highlighter that highlights violations in yellow."""
-    if not criterion_highlights.highlights:
-        logger.warning("No violations to highlight")
-        return {
-            "violations_found": 0,
-            "highlights_added": 0,
-            "output_file": str(output_path)
-        }
-
+    """PDF highlighter that highlights violations in yellow and returns bytes."""
     if not pdf_path.exists():
         raise FileNotFoundError(f"PDF file not found: {pdf_path}")
     
@@ -77,100 +68,116 @@ def highlight_violations_in_pdf(
         doc = fitz.open(str(pdf_path))
         highlights_added = 0
         
-        for highlight_span in criterion_highlights.highlights:
-            found_this_violation = False
-            
-            for page_num in range(len(doc)):
-                page = doc[page_num]
-
-                context_rects = page.search_for(highlight_span.context)
-                violation_rects = page.search_for(highlight_span.violating_text)
+        if criterion_highlights.highlights:
+            for highlight_span in criterion_highlights.highlights:
+                found_this_violation = False
                 
-                # Highlight violations that intersect with any context
-                for violation_rect in violation_rects:
-                    for context_rect in context_rects:
-                        if context_rect.intersects(violation_rect):
+                for page_num in range(len(doc)):
+                    page = doc[page_num]
 
-                            highlight = page.add_highlight_annot(violation_rect)
-                            highlight.set_colors(stroke=(1.0, 1.0, 0.0))
-                            
-                            highlight.update()
-                            highlights_added += 1
-                            logger.info(f"Added contextual highlight on page {page_num + 1}: '{highlight_span.violating_text[:50]}...'")
-                            found_this_violation = True
-                            break
-            
-            # If no exact matches found, try cross-page detection
-            if not found_this_violation:
-                logger.info(f"No exact match found, trying cross-page detection for: '{highlight_span.violating_text[:50]}...'")
-                
-                for page_num in range(len(doc) - 1):
-                    current_page = doc[page_num]
-                    next_page = doc[page_num + 1]
+                    context_rects = page.search_for(highlight_span.context)
+                    violation_rects = page.search_for(highlight_span.violating_text)
                     
-                    cross_page_instances = find_cross_page_text(
-                        current_page, next_page, highlight_span.violating_text
-                    )
+                    if not violation_rects or not context_rects:
+                        logger.info(f"No violations or context found on page {page_num + 1}")
+                        continue
                     
-                    if cross_page_instances:
-                        found_this_violation = True
-                        for rects in cross_page_instances:
-
-                            for page_idx, rect in [(page_num, rects[0]), (page_num + 1, rects[1])]:
-                                page = doc[page_idx]
-                                highlight = page.add_highlight_annot(rect)
+                    for violation_rect in violation_rects:
+                        for context_rect in context_rects:
+                            if context_rect.intersects(violation_rect):
+                                highlight = page.add_highlight_annot(violation_rect)
                                 highlight.set_colors(stroke=(1.0, 1.0, 0.0))
-                                
                                 highlight.update()
                                 highlights_added += 1
-                                logger.info(f"Added cross-page highlight on page {page_idx + 1}")
+                                found_this_violation = True
+                                break
+                    
+                    if found_this_violation:
+                        break
             
-            if not found_this_violation:
-                logger.warning(f"Violation text not found anywhere: '{highlight_span.violating_text[:50]}...'")
+                if not found_this_violation:
+                    logger.info(f"No exact match found, trying cross-page detection for: '{highlight_span.violating_text[:50]}...'")
+                    
+                    for page_num in range(len(doc) - 1):
+                        current_page = doc[page_num]
+                        next_page = doc[page_num + 1]
+                        
+                        cross_page_instances = find_cross_page_text(
+                            current_page, next_page, highlight_span.violating_text
+                        )
+                        
+                        if cross_page_instances:
+                            found_this_violation = True
+                            for rects in cross_page_instances:
+
+                                for page_idx, rect in [(page_num, rects[0]), (page_num + 1, rects[1])]:
+                                    page = doc[page_idx]
+                                    highlight = page.add_highlight_annot(rect)
+                                    highlight.set_colors(stroke=(1.0, 1.0, 0.0))
+                                    
+                                    highlight.update()
+                                    highlights_added += 1
+                                    logger.info(f"Added cross-page highlight on page {page_idx + 1}")
+                            break
+                
+                if not found_this_violation:
+                    logger.warning(f"Violation text not found anywhere: '{highlight_span.violating_text[:50]}...'")
         
-        #doc.save(str(output_path))
+        pdf_bytes = doc.tobytes()
         doc.close()
                 
         return {
-            "violations_found": criterion_highlights.total_violations,
+            "violations_found": criterion_highlights.total_violations if criterion_highlights.highlights else 0,
             "highlights_added": highlights_added,
-            "output_file": str(output_path)
+            "pdf_bytes": pdf_bytes
         }
         
     except Exception as e:
         logger.error(f"Error highlighting PDF: {str(e)}")
-        raise 
+        raise
 
 
 def highlight_document_violations(
     submission: Submission,
     guideline: List[CriterionInstructionIDs],
-    assignment_id: str,
-    openai_key: Optional[SecretStr] = None
-) -> Dict[str, dict]:
+    canvas_api: CanvasAPI,
+    openai_key: SecretStr
+) -> List[Dict[str, Any]]:
 
     validate_submission_for_highlighting(submission)
     
     processor = ProcessorFactory.get_processor(submission.submission_type)
     content = processor.process(submission)
     
-    sub_dirs = [str(assignment_id)]
+    sub_dirs = [str(submission.assignment_id)]
     file_path = build_submission_file_path(submission, sub_dirs)
     
-    all_violations = {}
+    all_results = []
     
     for criterion in guideline:
         logger.info(f"Processing criterion: {criterion.criterion}")
         
         violations = find_criterion_violations(content, criterion, openai_key)
 
-        output_path = Path(f"test_{criterion.criterion}.pdf")
         highlighting_result = highlight_violations_in_pdf(
             pdf_path=file_path,
-            criterion_highlights=violations,
-            output_path=output_path
+            criterion_highlights=violations
         )
         
-        all_violations[criterion.criterion] = highlighting_result
+        canvas_api.upload_pdf_file(
+                assignment_id=submission.assignment_id,
+                criterion_id=criterion.id,
+                user_id=submission.user_id,
+                pdf_bytes=highlighting_result["pdf_bytes"]
+        )
+        
+        result_for_criterion = {
+            "criterion_name": criterion.criterion,
+            "criterion_id": criterion.id,
+            "violations_found": highlighting_result["violations_found"],
+            "highlights_added": highlighting_result["highlights_added"]
+        }
+        
+        all_results.append(result_for_criterion)
     
-    return all_violations 
+    return all_results 

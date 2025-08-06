@@ -215,7 +215,7 @@ async def set_threshold(
             "threshold": request.threshold
         }
         
-        canvas_api.upload_root(threshold_data, "autograde_threshold", overwrite=True)
+        canvas_api.upload_root(threshold_data, "autograde_threshold")
         
         return {
             "message": f"Threshold set to {request.threshold} successfully",

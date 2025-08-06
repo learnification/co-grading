@@ -1,12 +1,9 @@
-from typing import Dict, List, Optional
-
-from typing import List, Optional
-from app.web.db.models.canvas import Assignment, RubricCriterion, RubricRating
+from typing import Dict, List
+from app.web.db.models.canvas import RubricCriterion
 from app.web.db.models.evaluation import RubricCriterionAssessment
 def generate_llm_feedback_messages(
     rubric_criterion: RubricCriterion,
-    rubric_assessment: RubricCriterionAssessment,
-    assignment: Assignment
+    rubric_assessment: RubricCriterionAssessment
 ) -> List[Dict[str, str]]:
     """
     Generates a prompt for the LLM to provide feedback on a human grader's assessment
@@ -109,14 +106,3 @@ Comments: "{rubric_assessment.comments}"""
         {"role": "system", "content": system_content},
         {"role": "user", "content": user_content}
     ]
-
-
-
-"""
-
-1. Over dependant on praise (especially for higher scores)
-2. Feed it description context for ratings, so we don't have to repeat the rating description essentially
-3. 
-
-
-"""

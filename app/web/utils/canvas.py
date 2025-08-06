@@ -13,7 +13,7 @@ class CanvasAPI:
         self.api_token = api_token
         self.domain = domain
         self.course_id = course_id
-        self.base_url = f"https://{domain}/api/v1/courses/{course_id}"
+        self.base_url = f"{domain}/api/v1/courses/{course_id}"
 
     def upload_file(self, file_data: Dict[str, Any], assignment_id: int, filename: str, overwrite: bool = True) -> Dict[str, Any]:
         """
@@ -335,6 +335,20 @@ class CanvasAPI:
         """Retrieve metadata JSON for a Canvas file."""
         return self._request('get', f"/files/{file_id}")
 
+    def get_grader_name(self, grader_id: str) -> str:
+        """Get grader name from Canvas user API using grader ID"""
+        grader_name = "Unknown Grader"
+
+        if grader_id != "unknown_grader":
+            try:
+                grader_data = self._global_request('get', f"/users/{grader_id}")
+                grader_name = grader_data.get("name", "Unknown Grader")
+            except Exception as grader_error:
+                print(f"[DEBUG] Could not get grader name: {grader_error}")
+                pass
+        
+        return grader_name
+
     def get_folders(self) -> List[Dict[str, Any]]:
         """Retrieves all folders in the course."""
         return self._request('get', '/folders')
@@ -385,7 +399,7 @@ class CanvasAPI:
         Makes a request to a global Canvas API endpoint (not course-specific).
         Handles URL construction, headers, and error checking.
         """
-        url = f"https://canvas.sfu.ca/api/v1{endpoint}"
+        url = f"{self.domain}/api/v1{endpoint}"
         headers = kwargs.pop('headers', {})
         headers.update(self._get_headers())
 

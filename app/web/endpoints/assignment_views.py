@@ -1,5 +1,4 @@
 from app.web.db.models.evaluation import AutogradeThresholdRequest, AutogradeToggleRequest, AutogradeCheckRequest, ThresholdCheckRequest
-from urllib.parse import urlparse
 from celery.result import AsyncResult
 from app.celery import celery_app
 from fastapi import APIRouter, Header, HTTPException
@@ -134,11 +133,10 @@ async def toggle_autograde(
     - Success message with current enabled status
     """
     try:
-        domain = urlparse(x_canvas_base_url).netloc
 
         canvas_api = CanvasAPI(
             api_token=x_canvas_token,
-            domain=domain,
+            domain=x_canvas_base_url,
             course_id=request.courseId
         )
         
@@ -199,15 +197,12 @@ async def set_threshold(
     - Success message with threshold value
     """
     try:
-        domain = urlparse(x_canvas_base_url).netloc
 
         canvas_api = CanvasAPI(
             api_token=x_canvas_token,
-            domain=domain,
+            domain=x_canvas_base_url,
             course_id=request.courseId
         )
-        
-
         
         # Create/update threshold file (course-wide)
         threshold_data = {
@@ -246,11 +241,10 @@ async def get_autograde_setting(
     - JSON content of the autograde settings file
     """
     try:
-        domain = urlparse(x_canvas_base_url).netloc
 
         canvas_api = CanvasAPI(
             api_token=x_canvas_token,
-            domain=domain,
+            domain=x_canvas_base_url,
             course_id=request.courseId
         )
         
@@ -282,11 +276,10 @@ async def get_threshold(
     - JSON content of the threshold file
     """
     try:
-        domain = urlparse(x_canvas_base_url).netloc
 
         canvas_api = CanvasAPI(
             api_token=x_canvas_token,
-            domain=domain,
+            domain=x_canvas_base_url,
             course_id=request.courseId
         )
         

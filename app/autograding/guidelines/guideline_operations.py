@@ -2,7 +2,7 @@ from typing import Dict, Any, List
 from pydantic import SecretStr
 from app.web.utils import logger, CanvasAPI
 from app.autograding.guidelines.guideline_agent import create_rubric_guideline
-from app.web.db.models import Assignment, Submission, CriterionInstructionIDs
+from app.web.db.models import Assignment
 
 
 def generate_and_upload_guideline(

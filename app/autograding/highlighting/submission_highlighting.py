@@ -8,7 +8,8 @@ from app.autograding.highlighting.highlight_agent import find_criterion_violatio
 from app.autograding.highlighting.models import CriterionHighlights
 from app.web.db.models import Submission, CriterionInstructionIDs
 from app.web.utils import logger
-
+import time
+import asyncio
 
 def validate_submission_for_highlighting(submission: Submission) -> None:
 
@@ -86,9 +87,9 @@ def highlight_violations_in_pdf(
                         for context_rect in context_rects:
                             if context_rect.intersects(violation_rect):
                                 highlight = page.add_highlight_annot(violation_rect)
+                                highlights_added += 1
                                 highlight.set_colors(stroke=(1.0, 1.0, 0.0))
                                 highlight.update()
-                                highlights_added += 1
                                 found_this_violation = True
                                 break
                     
@@ -181,3 +182,122 @@ def highlight_document_violations(
         all_results.append(result_for_criterion)
     
     return all_results 
+
+
+def process_single_criterion(
+    criterion: CriterionInstructionIDs,
+    content: str,
+    file_path: Path,
+    canvas_api: CanvasAPI,
+    openai_key: SecretStr,
+    submission: Submission
+) -> Dict[str, Any]:
+    """Process a single criterion: LLM + highlighting"""
+    criterion_start_time = time.time()
+    logger.info(f"Processing criterion: {criterion.criterion}")
+    
+    violations = find_criterion_violations(content, criterion, openai_key)
+    violations_found_time = time.time()
+    logger.info(f"Criterion {criterion.criterion} took {(violations_found_time - criterion_start_time):.3f}s to find violations")
+    highlighting_result = highlight_violations_in_pdf(
+        pdf_path=file_path,
+        criterion_highlights=violations
+    )
+    highlighting_time = time.time()
+    logger.info(f"Criterion {criterion.criterion} took {(highlighting_time - violations_found_time):.3f}s to highlight")
+    criterion_end_time = time.time()
+    logger.info(f"Criterion {criterion.criterion} took {(criterion_end_time - criterion_start_time):.3f}s to process")
+    
+    return {
+        "criterion_name": criterion.criterion,
+        "criterion_id": criterion.id,
+        "violations_found": highlighting_result["violations_found"],
+        "highlights_added": highlighting_result["highlights_added"],
+        "pdf_bytes": highlighting_result["pdf_bytes"],  # Include PDF bytes for background upload
+        "assignment_id": submission.assignment_id,
+        "user_id": submission.user_id
+    }
+
+
+async def process_single_criterion_async(
+    criterion: CriterionInstructionIDs,
+    content: str,
+    file_path: Path,
+    canvas_api: CanvasAPI,
+    openai_key: SecretStr,
+    submission: Submission
+) -> Dict[str, Any]:
+    """Async version using thread pool"""
+    return await asyncio.to_thread(
+        process_single_criterion,
+        criterion, content, file_path, canvas_api, openai_key, submission
+    )
+
+
+async def highlight_document_violations_async(
+    submission: Submission,
+    guideline: List[CriterionInstructionIDs],
+    canvas_api: CanvasAPI,
+    openai_key: SecretStr
+) -> List[Dict[str, Any]]:
+
+    start_time = time.time()
+    validate_submission_for_highlighting(submission)
+    
+    processor = ProcessorFactory.get_processor(submission.submission_type)
+    content = processor.process(submission)
+    
+    sub_dirs = [str(submission.assignment_id)]
+    file_path = build_submission_file_path(submission, sub_dirs)
+    
+    logger.info(f"Highlighting {len(guideline)} criteria in parallel")
+    
+    tasks = [
+        process_single_criterion_async(
+            criterion, content, file_path, canvas_api, openai_key, submission
+        )
+        for criterion in guideline
+    ]
+    
+    all_results = await asyncio.gather(*tasks)
+    
+    end_time = time.time()
+    logger.info(f"Took {(end_time - start_time):.3f}s to highlight")
+    return all_results
+
+def upload_highlighted_pdfs(canvas_api: CanvasAPI, all_results: List[Dict[str, Any]]) -> None:
+    """Background function to upload all PDFs sequentially"""
+    upload_start_time = time.time()
+    logger.info(f"Background: Starting batch upload of {len(all_results)} PDFs")
+    
+    for result in all_results:
+        canvas_api.upload_pdf_file(
+            assignment_id=result["assignment_id"],
+            criterion_id=result["criterion_id"],
+            user_id=result["user_id"],
+            pdf_bytes=result["pdf_bytes"]
+        )
+    
+    upload_end_time = time.time()
+    logger.info(f"Background: Batch upload completed in {upload_end_time - upload_start_time} seconds")
+
+
+async def upload_highlighted_pdfs_async(canvas_api: CanvasAPI, all_results: List[Dict[str, Any]]) -> None:
+    """Async function to upload all PDFs in parallel"""
+    upload_start_time = time.time()
+    logger.info(f"Starting highlight upload of {len(all_results)} PDFs")
+    
+    async def upload_single_pdf(result: Dict[str, Any]) -> None:
+        """Upload a single PDF using thread pool"""
+        await asyncio.to_thread(
+            canvas_api.upload_pdf_file,
+            assignment_id=result["assignment_id"],
+            criterion_id=result["criterion_id"],
+            user_id=result["user_id"],
+            pdf_bytes=result["pdf_bytes"]
+        )
+    
+    await asyncio.gather(*[upload_single_pdf(result) for result in all_results])
+    
+    upload_end_time = time.time()
+    logger.info(f"Highlight upload completed in {upload_end_time - upload_start_time:.3f}s")

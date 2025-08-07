@@ -3,12 +3,10 @@ from fastapi import APIRouter, Header, HTTPException, BackgroundTasks
 from fastapi.responses import FileResponse
 from app.web.db.models import GenerateGuidelineRequest, UpdateGuidelineRequest, HighlightViolationsRequest
 from app.web.utils import logger, CanvasAPI
-from typing import Optional
 from pydantic import SecretStr
 from pathlib import Path
 from app.autograding.guidelines import generate_and_upload_guideline, update_guideline_in_canvas, retrieve_guideline_from_canvas
-from app.autograding.highlighting.submission_highlighting import highlight_document_violations
-
+from app.autograding.highlighting.submission_highlighting import highlight_document_violations_async, upload_highlighted_pdfs_async
 router = APIRouter()
 
 @router.post("/generate_guideline", response_model=dict)
@@ -60,7 +58,6 @@ def get_guideline(
     Retrieve the rubric/guideline for a specific assignment from Canvas.
     """
     try:
-        logger.info(f"Passed: course_id={course_id}, assignment_id={assignment_id}, base_url={base_url}, canvas_token={x_canvas_token}")
         return retrieve_guideline_from_canvas(
             course_id=course_id,
             assignment_id=assignment_id,
@@ -73,7 +70,7 @@ def get_guideline(
 
 
 @router.post("/highlight_violations", response_model=dict)
-def highlight_violations(
+async def highlight_violations(
     request: HighlightViolationsRequest,
     x_user_openai_key: SecretStr = Header(..., alias="X-User-OpenAI-Key"),
     x_canvas_token: SecretStr = Header(..., alias="X-Canvas-Token")
@@ -81,16 +78,28 @@ def highlight_violations(
     try:
         logger.info(f"Received request to highlight violations for submission {request.submission}")
         
-        canvas_api = CanvasAPI(x_canvas_token, request.baseURL, request.course_id)
+        canvas_api = CanvasAPI(api_token=x_canvas_token, domain=request.baseURL, course_id=request.course_id)
 
-        all_highlights = highlight_document_violations(
+        all_highlights = await highlight_document_violations_async(
             submission=request.submission,
             guideline=request.guideline,
             openai_key=x_user_openai_key,
             canvas_api=canvas_api
         )
         
-        return {"results": all_highlights}
+        await upload_highlighted_pdfs_async(canvas_api, all_highlights)
+        
+        clean_results = []
+        for result in all_highlights:
+            clean_result = {
+                "criterion_name": result["criterion_name"],
+                "criterion_id": result["criterion_id"],
+                "violations_found": result["violations_found"],
+                "highlights_added": result["highlights_added"]
+            }
+            clean_results.append(clean_result)
+        
+        return {"results": clean_results}
     except Exception as e:
         logger.error(f"Error in highlight_violations: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to highlight violations")
@@ -106,7 +115,6 @@ def get_highlighted_pdf(
     background_tasks: BackgroundTasks,
     x_canvas_token: SecretStr = Header(..., alias="X-Canvas-Token")
 ):
-
     try:
         canvas_api = CanvasAPI(x_canvas_token, base_url, course_id)
         

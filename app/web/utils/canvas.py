@@ -68,6 +68,31 @@ class CanvasAPI:
         
         return self._confirm_upload(upload_response)
 
+    def upload_pdf_file(self, file_data: bytes, assignment_id: int, criterion_id: str, user_id:int) -> Dict[str, Any]:
+        """
+        Uploads a PDF file to the assignment-specific folder in Canvas.
+        
+        File structure: development/assignmentID/assignmentId_filename.pdf
+        
+        Args:
+            file_data: The PDF data to upload
+            assignment_id: The assignment ID for folder organization
+            filename: The name of the file (without .pdf extension)
+        """
+        appended_filename = f"{assignment_id}_{criterion_id}_{user_id}_highlighted.pdf"
+        
+        upload_details = self._announce_file_upload(appended_filename, len(file_data), assignment_id)
+        
+        upload_response = self._execute_upload_to_url(
+            upload_details['upload_url'],
+            upload_details['upload_params'],
+            appended_filename,
+            file_data,
+            content_type='application/pdf'
+        )
+        
+        return self._confirm_upload(upload_response)
+
     def upload_root(self, file_data: Dict[str, Any], filename: str) -> Dict[str, Any]:
         """
         Uploads a JSON file to the development root folder in Canvas.
@@ -420,7 +445,7 @@ class CanvasAPI:
             "Authorization": f"Bearer {self.api_token.get_secret_value()}"
         }
         
-    def _execute_upload_to_url(self, upload_url: str, params: Dict[str, Any], filename: str, data: bytes) -> requests.Response:
+    def _execute_upload_to_url(self, upload_url: str, params: Dict[str, Any], filename: str, data: bytes, content_type="application/json") -> requests.Response:
         """Phase 2: Upload the file data to the URL provided by Canvas."""
         files = {'file': (filename, BytesIO(data), content_type)}
         response = requests.post(upload_url, data=params, files=files)

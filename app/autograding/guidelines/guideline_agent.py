@@ -13,7 +13,6 @@ def create_rubric_guideline(assignment: Assignment, openai_key: SecretStr) -> Li
     Workflow for enhancing a rubric with AI-generated sub-rules.
     This should be run once per assignment.
     """
-
     llm_name = 'gpt-4.1-mini-2025-04-14'
 
     llm = build_llm_for_task(llm_name, openai_key, streaming=False).with_structured_output(EnhancedRubricResponse)
@@ -21,22 +20,25 @@ def create_rubric_guideline(assignment: Assignment, openai_key: SecretStr) -> Li
     criteria_list = assignment.rubric
     assignment_description = assignment.description
     rubric_text = chr(10).join(
-        f"{criterion.description} ({criterion.points} pts): {criterion.long_description or '[No description]'}\n" +
-        "\n".join(f"  - {r.description} ({r.points} pts): {r.long_description or '[No description]'}" for r in criterion.ratings)
-        for criterion in criteria_list
-    )
+            f"{criterion.description}: {criterion.long_description or '[No description]'}\n" +
+            "\n".join(f"  - {r.description} ({r.points} pts): {r.long_description or '[No description]'}" for r in criterion.ratings)
+            for criterion in criteria_list
+        )
 
-    prompt = f"""You are an expert in educational assessment and AI-powered grading. Your task is to create clear, actionable instructions for another AI system that will analyze student submissions for a specific assignment.
+    prompt = f"""
+You are an expert in educational assessment and AI-powered grading. Your task is to create a clear, actionable instruction for another AI system that will analyze student submissions for a specific assignment.
 
-For each criterion in the grading rubric, provide a single, concise instruction that tells the AI:
+For each criterion in the grading rubric, provide a single, concise instruction for the next AI. This instruction should tell the AI:
+    - What to look for in the text that is relevant to this criterion
+    - What to highlight in the student submission
 
-    - What specific content, errors, or issues to look for in the student submission text relevant to this criterion.
-    - What exact text or phrases to highlight as evidence of a violation or deficiency related to the criterion.
+The instruction should be specific, actionable, and easy for an AI to follow. It should help the AI highlight relevant text for the TA.
 
-Do NOT include any instructions about assigning scores or marks. Focus solely on identifying and highlighting rubric violations or missing elements.
+Here is the assignment description:
+{assignment_description}
 
-    Here is the rubric:
-    {rubric_text}
+Here is the rubric:
+{rubric_text}
 
 Return instructions for each criterion listed above.
     """

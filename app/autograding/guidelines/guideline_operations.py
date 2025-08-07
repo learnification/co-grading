@@ -35,7 +35,7 @@ def generate_and_upload_guideline(
     result = create_rubric_guideline(assignment, openai_key)
     
     # Upload to Canvas
-    canvas_api.upload_rubric(result, assignment_id)
+    canvas_api.upload_file(result, assignment_id, 'rubric_guideline')
     
     return {"generated_guideline": result}
 
@@ -64,7 +64,7 @@ def update_guideline_in_canvas(
     
     canvas_api = CanvasAPI(canvas_token, base_url, course_id)
     
-    updated = canvas_api.upload_rubric(guideline, assignment_id)
+    updated = canvas_api.upload_file(guideline, assignment_id, 'rubric_guideline')
     
     return {"updated_guideline": updated}
 
@@ -91,6 +91,6 @@ def retrieve_guideline_from_canvas(
     
     canvas_api = CanvasAPI(canvas_token, base_url, course_id)
     
-    guideline = canvas_api.get_rubric(assignment_id)
+    guideline = canvas_api.get_file(assignment_id,'rubric_guideline')
     
     return {"guideline": guideline} 

@@ -137,53 +137,6 @@ def highlight_violations_in_pdf(
         logger.error(f"Error highlighting PDF: {str(e)}")
         raise
 
-
-def highlight_document_violations(
-    submission: Submission,
-    guideline: List[CriterionInstructionIDs],
-    canvas_api: CanvasAPI,
-    openai_key: SecretStr
-) -> List[Dict[str, Any]]:
-
-    validate_submission_for_highlighting(submission)
-    
-    processor = ProcessorFactory.get_processor(submission.submission_type)
-    content = processor.process(submission)
-    
-    sub_dirs = [str(submission.assignment_id)]
-    file_path = build_submission_file_path(submission, sub_dirs)
-    
-    all_results = []
-    
-    for criterion in guideline:
-        logger.info(f"Processing criterion: {criterion.criterion}")
-        
-        violations = find_criterion_violations(content, criterion, openai_key)
-
-        highlighting_result = highlight_violations_in_pdf(
-            pdf_path=file_path,
-            criterion_highlights=violations
-        )
-        
-        canvas_api.upload_pdf_file(
-                assignment_id=submission.assignment_id,
-                criterion_id=criterion.id,
-                user_id=submission.user_id,
-                pdf_bytes=highlighting_result["pdf_bytes"]
-        )
-        
-        result_for_criterion = {
-            "criterion_name": criterion.criterion,
-            "criterion_id": criterion.id,
-            "violations_found": highlighting_result["violations_found"],
-            "highlights_added": highlighting_result["highlights_added"]
-        }
-        
-        all_results.append(result_for_criterion)
-    
-    return all_results 
-
-
 def process_single_criterion(
     criterion: CriterionInstructionIDs,
     content: str,
@@ -265,23 +218,6 @@ async def highlight_document_violations_async(
     logger.info(f"Took {(end_time - start_time):.3f}s to highlight")
     return all_results
 
-def upload_highlighted_pdfs(canvas_api: CanvasAPI, all_results: List[Dict[str, Any]]) -> None:
-    """Background function to upload all PDFs sequentially"""
-    upload_start_time = time.time()
-    logger.info(f"Background: Starting batch upload of {len(all_results)} PDFs")
-    
-    for result in all_results:
-        canvas_api.upload_pdf_file(
-            assignment_id=result["assignment_id"],
-            criterion_id=result["criterion_id"],
-            user_id=result["user_id"],
-            pdf_bytes=result["pdf_bytes"]
-        )
-    
-    upload_end_time = time.time()
-    logger.info(f"Background: Batch upload completed in {upload_end_time - upload_start_time} seconds")
-
-
 async def upload_highlighted_pdfs_async(canvas_api: CanvasAPI, all_results: List[Dict[str, Any]]) -> None:
     """Async function to upload all PDFs in parallel"""
     upload_start_time = time.time()
@@ -294,7 +230,7 @@ async def upload_highlighted_pdfs_async(canvas_api: CanvasAPI, all_results: List
             assignment_id=result["assignment_id"],
             criterion_id=result["criterion_id"],
             user_id=result["user_id"],
-            pdf_bytes=result["pdf_bytes"]
+            file_data=result["pdf_bytes"]
         )
     
     await asyncio.gather(*[upload_single_pdf(result) for result in all_results])

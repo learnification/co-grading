@@ -1,8 +1,8 @@
 from typing import Dict, List, Optional
 from pydantic import BaseModel, Field, SecretStr
-from .canvas import Assignment, Course, Submission
+from .canvas import Assignment, Course, Submission, RubricCriterionAssessment, RubricCriterion
 from .user_settings import CustomSettings
-
+from enum import Enum
 
 # Define RequestGradingDto
 class RequestGradingDto(BaseModel):
@@ -13,8 +13,6 @@ class RequestGradingDto(BaseModel):
     document_id: Optional[str] = Field(None, alias="documentId")
     openai_token: Optional[SecretStr] = None
 
-
-
 class GradingFeedback(BaseModel):
     submission_id: int
     score: float
@@ -22,6 +20,49 @@ class GradingFeedback(BaseModel):
 
 
 GradingFeedbackResponse = Dict[int, GradingFeedback]
+
+class BatchLLMFeedbackRequest(BaseModel):
+    criteria: List[RubricCriterion]
+    criteriaAssessments: Dict[str, Optional[RubricCriterionAssessment]]
+    assignment: Assignment
+    extra: dict  # Contains courseId, assignmentId, userId
+
+class AuditRetrievalRequest(BaseModel):   # For audit-retrieval
+    assignmentId: int
+    userId: int
+    courseId: int
+
+class ApprovalRetrievalRequest(BaseModel): # For approval-retrieval
+    assignmentId: int
+    courseId: int
+
+class AutogradeToggleRequest(BaseModel):
+    assignmentId: int
+    courseId: int
+    graderName: str
+
+class AutogradeCheckRequest(BaseModel):
+    assignmentId: int
+    courseId: int
+
+class AutogradeThresholdRequest(BaseModel):
+    courseId: int
+    graderName: str
+    threshold: int
+
+class ThresholdCheckRequest(BaseModel):
+    courseId: int
+ 
+
+class AIFeedbackStatus(str, Enum):
+    SUCCESS = "SUCCESS"
+    WARNING = "WARNING"
+    FAILURE = "FAILURE"
+
+
+class AIFeedback(BaseModel):
+    status: AIFeedbackStatus
+    feedback: str
 
 class CriterionInstruction(BaseModel):
     """Single criterion with its AI grading instruction"""

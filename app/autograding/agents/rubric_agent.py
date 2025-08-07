@@ -22,6 +22,11 @@ def create_rubric_guideline(assignment: Assignment, openai_key: SecretStr = None
     
     criteria_list = assignment.rubric
     assignment_description = assignment.description
+    rubric_text = chr(10).join(
+        f"{criterion.description} ({criterion.points} pts): {criterion.long_description or '[No description]'}\n" +
+        "\n".join(f"  - {r.description} ({r.points} pts): {r.long_description or '[No description]'}" for r in criterion.ratings)
+        for criterion in criteria_list
+    )
 
     prompt = f"""
     You are an expert in educational assessment and AI-powered grading. Your task is to create a clear, actionable instruction for another AI system that will analyze student submissions for a specific assignment.
@@ -37,11 +42,7 @@ def create_rubric_guideline(assignment: Assignment, openai_key: SecretStr = None
     {assignment_description}
 
     Here is the rubric:
-    {chr(10).join(
-        f"{criterion.description} ({criterion.points} pts): {criterion.long_description or '[No description]'}\n" +
-        "\n".join(f"  - {r.description} ({r.points} pts): {r.long_description or '[No description]'}" for r in criterion.ratings)
-        for criterion in criteria_list
-    )}
+    {rubric_text}
 
     Return instructions for each criterion listed above.
     """

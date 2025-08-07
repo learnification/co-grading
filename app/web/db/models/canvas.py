@@ -103,6 +103,10 @@ class Assignment(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+class RubricCriterionAssessment(BaseModel):
+  rating_id: str
+  comments: str = ""
+  points: Optional[int] = None
 
 class Submission(BaseModel):
     """

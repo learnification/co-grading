@@ -1,6 +1,7 @@
 import requests
 from typing import Optional, Dict, Any, List
 import json
+import re
 from io import BytesIO
 from fastapi import HTTPException
 from pydantic import SecretStr
@@ -12,24 +13,294 @@ class CanvasAPI:
         self.api_token = api_token
         self.domain = domain
         self.course_id = course_id
-        self.base_url = f"https://{domain}/api/v1/courses/{course_id}"
+        self.base_url = f"{domain}/api/v1/courses/{course_id}"
 
+    def upload_file(self, file_data: Dict[str, Any], assignment_id: int, filename: str, overwrite: bool = True) -> Dict[str, Any]:
+        """
+        Uploads a JSON file to the assignment-specific folder in Canvas.
+        
+        File structure: development/assignmentID/assignmentId_filename.json
+        
+        Logic:
+        - If overwrite=True: Should be this for all non-audit files, and inter-iteration criteria merging 
+        - If overwrite=False: Merges with existing file by appending new iteration (only for audit files)
+        
+        Args:
+            file_data: The JSON data to upload
+            assignment_id: The assignment ID for folder organization
+            filename: The name of the file (without .json extension)
+            overwrite: If True, deletes existing file; if False, merges with existing
+        """
+        appended_filename = f"{assignment_id}_{filename}.json"
+        
+        if overwrite:
+            # Canvas automatically overwrites, so we just upload the new data
+            pass
+        else:
+            # Merge with existing data
+            try:
+                existing_data = self.get_file(assignment_id, filename)
 
-    def upload_rubric(self, rubric_data: Dict[str, Any], assignment_id: int) -> Dict[str, Any]:
-        """Uploads a rubric JSON to the designated course folder in Canvas."""
-        filename = f"{assignment_id}_rubric_guideline.json"
-        json_bytes = json.dumps(rubric_data, indent=2).encode('utf-8')
+                if 'history' in existing_data and 'history' in file_data:   
+                    max_iteration = max([entry.get('iteration', 0) for entry in existing_data['history']], default=0)  # Highest (most recent) iteration number
+                    
+                    for new_entry in file_data['history']:
+                        new_entry['iteration'] = max_iteration + 1
+                    
+                    existing_data['history'].extend(file_data['history'])
+                    existing_data['currentStatus'] = file_data.get('currentStatus', existing_data.get('currentStatus'))
+                    file_data = existing_data
+                            
+            except HTTPException as e:
+                # File doesn't exist, which is fine - just upload the new data
+                pass
+        
+        json_bytes = json.dumps(file_data, indent=2).encode('utf-8')
 
-        upload_details = self._announce_rubric_upload(filename, len(json_bytes))
+        upload_details = self._announce_file_upload(appended_filename, len(json_bytes), assignment_id)
         
         upload_response = self._execute_upload_to_url(
             upload_details['upload_url'],
             upload_details['upload_params'],
-            filename,
+            appended_filename,
             json_bytes
         )
         
         return self._confirm_upload(upload_response)
+
+    def upload_root(self, file_data: Dict[str, Any], filename: str) -> Dict[str, Any]:
+        """
+        Uploads a JSON file to the development root folder in Canvas.
+        
+        File structure: development/filename.json (course-wide files)
+        
+        Args:
+            file_data: The JSON data to upload
+            filename: The name of the file (without .json extension)
+        """
+        appended_filename = f"{filename}.json"
+        
+        json_bytes = json.dumps(file_data, indent=2).encode('utf-8')
+
+        # Upload to development folder
+        development_folder = self.get_or_create_folder('development')
+        
+        payload = {
+            'name': appended_filename,
+            'size': len(json_bytes),
+            'content_type': 'application/json',
+            'parent_folder_id': development_folder['id'],
+            'published': False
+        }
+        
+        result = self._request('post', '/files', data=payload)
+        
+        upload_response = self._execute_upload_to_url(
+            result['upload_url'],
+            result['upload_params'],
+            appended_filename,
+            json_bytes
+        )
+        
+        return self._confirm_upload(upload_response)
+
+    def _search_file(self, search_term: str, folder_id: Optional[int] = None, per_page: int = 1) -> List[Dict[str, Any]]:
+        """
+        Generic file search method that can be reused across the codebase.
+        
+        Args:
+            search_term: The search term to look for
+            folder_id: Optional folder ID to limit search to specific folder
+            per_page: Number of results to return (default 1 for single file searches)
+            
+        Returns:
+            List of file metadata dictionaries
+        """
+        endpoint = f"/files?search_term={search_term}&per_page={per_page}"
+        if folder_id:
+            endpoint += f"&folder_id={folder_id}"
+        
+        return self._request('get', endpoint)
+
+    def get_file(self, assignment_id: int, filename: str, return_id: bool = False) -> Dict[str, Any]:
+        """
+        Retrieves a JSON file from the assignment-specific folder.
+        
+        Args:
+            assignment_id: The assignment ID
+            filename: The name of the file (without .json extension)
+            return_id: If True, returns dict with 'data' and 'file_id', otherwise returns just the data
+            
+        Returns:
+            If return_id=True: {"data": file_data, "file_id": file_id}
+            If return_id=False: just file_data - Is default arg, so existing calls still work.
+        """
+
+        appendedFilename = f"{assignment_id}_{filename}.json"
+        print(f"[DEBUG] Searching for file: {appendedFilename}")
+        
+        search_results = self._search_file(appendedFilename)
+
+        if not search_results:
+            raise HTTPException(status_code=404, detail=f"File {appendedFilename} for assignment {assignment_id} and {filename} not found.")
+
+        # Since we have unique filenames, just take the first result
+        target_file = search_results[0]
+        file_id = target_file.get('id')
+        
+        # Fallback to download URL if content not available
+        download_url = target_file.get("url")
+        if not download_url:
+            raise HTTPException(status_code=500, detail="File found but download URL is missing.")
+
+        response = requests.get(download_url)
+        response.raise_for_status()
+        file_data = response.json()
+        
+        if return_id:
+            return {"data": file_data, "file_id": file_id}
+        else:
+            return file_data
+
+    def get_root_file(self, filename: str, return_id: bool = False) -> Dict[str, Any]:
+        """
+        Retrieves a JSON file from the development root folder.
+        
+        Args:
+            filename: The name of the file (without .json extension)
+            return_id: If True, returns dict with 'data' and 'file_id', otherwise returns just the data
+            
+        Returns:
+            If return_id=True: {"data": file_data, "file_id": file_id}
+            If return_id=False: file_data (backward compatible)
+        """
+        appended_filename = f"{filename}.json"
+        
+        search_results = self._search_file(appended_filename)
+
+        if not search_results:
+            raise HTTPException(status_code=404, detail=f"Root file {appended_filename} not found.")
+
+        # Since there's only one threshold file per course, just use the first matching file
+        if len(search_results) == 1 and appended_filename in search_results[0].get('display_name', ''):
+            target_file = search_results[0]
+        else:
+            raise HTTPException(status_code=404, detail=f"Root file {appended_filename} not found.")
+
+        file_id = target_file.get('id')
+        
+        # Fallback to download URL if content not available
+        download_url = target_file.get("url")
+        if not download_url:
+            raise HTTPException(status_code=500, detail="Root file found but download URL is missing.")
+
+        response = requests.get(download_url)
+        response.raise_for_status()
+        file_data = response.json()
+        
+        if return_id:
+            return {"data": file_data, "file_id": file_id}
+        else:
+            return file_data
+
+    def list_files_in_assignment_folder(self, assignment_id: int) -> List[Dict[str, Any]]:
+        """
+        Lists all files in the assignment-specific folder using search API.
+        Used mainly by approval counter endpoint, since it needs to check all audit files for an assignment
+        
+        Args:
+            assignment_id: The assignment ID
+            
+        Returns:
+            List of file metadata dictionaries
+        """
+
+        assignment_folder = self.get_or_create_assignment_folder(assignment_id)
+        
+        try:
+            files = self._global_request('get', f"/folders/{assignment_folder['id']}/files")
+            return files
+        except Exception as e:
+            search_results = self._search_file(".json", folder_id=assignment_folder['id'], per_page=100)
+            
+            return search_results
+
+    def get_or_create_assignment_folder(self, assignment_id: int) -> Dict[str, Any]:
+        """
+        Creates nested folder structure: development/assignmentID/
+        
+        Args:
+            assignment_id: The assignment ID for the folder name
+        """
+        
+        dev_folder = self.get_or_create_folder('development')  # Ensure development folder exists
+        
+        assignment_folder_name = str(assignment_id)
+        assignment_folder = self.get_folder_by_name_in_parent(assignment_folder_name, dev_folder['id'])         # Check if assignment folder already exists within development
+        
+        if assignment_folder:
+            return assignment_folder
+        
+        new_folder = self.create_folder_in_parent(assignment_folder_name, dev_folder['id'])   # Else we create one
+        return new_folder
+
+    def get_folder_by_name_in_parent(self, folder_name: str, parent_folder_id: int) -> Optional[Dict[str, Any]]:
+        """Find a folder by name within a specific parent folder."""
+        
+        try:
+            # First we try subfolders endpoint
+            url_path = f"/folders/{parent_folder_id}/folders"
+            subfolders = self._request('get', url_path)
+            
+            for folder in subfolders:
+                if folder.get('name') == folder_name:
+                    return folder
+            
+            return None
+            
+        except requests.exceptions.HTTPError as e:
+            if e.response.status_code == 404:
+                # Then try getting all folders and filter by parents
+                try:
+                    all_folders = self._request('get', '/folders')
+                    matching_folders = [f for f in all_folders if f.get('parent_folder_id') == parent_folder_id]
+                    
+                    for folder in matching_folders:
+                        if folder.get('name') == folder_name:
+                            return folder
+                    
+                    return None
+                    
+                except Exception as alt_e:
+                    return None
+            else:
+                raise
+        except Exception as e:
+            raise
+
+    def create_folder_in_parent(self, folder_name: str, parent_folder_id: int) -> Dict[str, Any]:
+        """Create a folder within a specific parent folder."""
+        data = {
+            'name': folder_name,
+            'parent_folder_id': parent_folder_id,
+            'locked': True
+        }
+        return self._request('post', '/folders', data=data)
+
+    def _announce_file_upload(self, filename: str, size: int, assignment_id: int) -> Dict[str, Any]:
+        """Phase 1: Announce the file upload to Canvas in the assignment-specific folder."""
+        assignment_folder = self.get_or_create_assignment_folder(assignment_id)
+        
+        payload = {
+            'name': filename,
+            'size': size,
+            'content_type': 'application/json',
+            'parent_folder_id': assignment_folder['id'],
+            'published': False
+        }
+        
+        result = self._request('post', '/files', data=payload)
+        return result
 
     def download_canvas_file(self, file_id: int, output_path: str = None) -> str:
         """Downloads a file from Canvas and saves it locally."""
@@ -57,11 +328,26 @@ class CanvasAPI:
         folder = self.get_folder_by_name(folder_name)
         if folder:
             return folder
-        return self.create_folder(folder_name)
+        new_folder = self.create_folder(folder_name)
+        return new_folder
 
     def get_file_metadata(self, file_id: int) -> Dict[str, Any]:
         """Retrieve metadata JSON for a Canvas file."""
         return self._request('get', f"/files/{file_id}")
+
+    def get_grader_name(self, grader_id: str) -> str:
+        """Get grader name from Canvas user API using grader ID"""
+        grader_name = "Unknown Grader"
+
+        if grader_id != "unknown_grader":
+            try:
+                grader_data = self._global_request('get', f"/users/{grader_id}")
+                grader_name = grader_data.get("name", "Unknown Grader")
+            except Exception as grader_error:
+                print(f"[DEBUG] Could not get grader name: {grader_error}")
+                pass
+        
+        return grader_name
 
     def get_folders(self) -> List[Dict[str, Any]]:
         """Retrieves all folders in the course."""
@@ -84,28 +370,9 @@ class CanvasAPI:
         }
         return self._request('post', '/folders', data=data)
 
-    def get_rubric(self, assignment_id: int) -> Dict[str, Any]:
-        """Retrieves a rubric for a specific assignment using the Canvas search API."""
-        search_term = f"{assignment_id}_rubric_guideline.json"
-        # Use the search_term parameter to find the file directly
-        search_results = self._request('get', f"/files?search_term={search_term}")
 
-        if not search_results:
-            raise HTTPException(status_code=404, detail=f"Rubric file for assignment {assignment_id} not found.")
-
-        # Assuming the first result is the correct one
-        file_metadata = search_results[0]
-        download_url = file_metadata.get("url")
-
-        if not download_url:
-            raise HTTPException(status_code=500, detail="Rubric file found but download URL is missing.")
-
-        response = requests.get(download_url)
-        response.raise_for_status()
-        return response.json()
 
     # --- Private Helper Methods ---
-
     def _request(self, method: str, endpoint: str, **kwargs) -> Any:
         """
         Makes a request to a Canvas API endpoint.
@@ -127,26 +394,32 @@ class CanvasAPI:
         except json.JSONDecodeError:
             return response.text
 
+    def _global_request(self, method: str, endpoint: str, **kwargs) -> Any:
+        """
+        Makes a request to a global Canvas API endpoint (not course-specific).
+        Handles URL construction, headers, and error checking.
+        """
+        url = f"{self.domain}/api/v1{endpoint}"
+        headers = kwargs.pop('headers', {})
+        headers.update(self._get_headers())
+
+        response = requests.request(method, url, headers=headers, **kwargs)
+        response.raise_for_status()
+
+        if response.status_code == 204: 
+            return response
+        
+        try:
+            return response.json()
+        except json.JSONDecodeError:
+            return response.text
+
     def _get_headers(self) -> Dict[str, str]:
         """Returns the default authorization headers."""
         return {
             "Authorization": f"Bearer {self.api_token.get_secret_value()}"
         }
-
-    def _announce_rubric_upload(self, filename: str, size: int) -> Dict[str, Any]:
-        """Phase 1: Announce the file upload to Canvas."""
-        folder = self.get_or_create_folder('development')
         
-        payload = {
-            'name': filename,
-            'size': size,
-            'content_type': 'application/json',
-            'parent_folder_id': folder['id'],
-            'published': False
-        }
-        
-        return self._request('post', '/files', data=payload)
-
     def _execute_upload_to_url(self, upload_url: str, params: Dict[str, Any], filename: str, data: bytes) -> requests.Response:
         """Phase 2: Upload the file data to the URL provided by Canvas."""
         files = {'file': (filename, BytesIO(data), 'application/json')}

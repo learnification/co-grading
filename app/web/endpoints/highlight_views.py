@@ -18,6 +18,7 @@ def generate_guideline(
     try:
         return generate_and_upload_guideline(
             assignment=request.assignment,
+            toggles=request.toggles,
             base_url=request.baseURL,
             canvas_token=x_canvas_token,
             openai_key=x_user_openai_key
@@ -76,8 +77,6 @@ async def highlight_violations(
     x_canvas_token: SecretStr = Header(..., alias="X-Canvas-Token")
 ):
     try:
-        logger.info(f"Received request to highlight violations for submission {request.submission}")
-        
         canvas_api = CanvasAPI(api_token=x_canvas_token, domain=request.baseURL, course_id=request.course_id)
 
         all_highlights = await highlight_document_violations_async(

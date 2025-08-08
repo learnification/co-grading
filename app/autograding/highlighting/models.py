@@ -7,13 +7,11 @@ class HighlightSpan(BaseModel):
     violating_text: str
     context: str 
     #explanation: str
-    #confidence: float = Field(description="Confidence score 0.0-1.0")
+    #confidence: float = Field(description="Confidence score 0.0-1.0") # Speeds up if commented out
 
 
 class CriterionHighlights(BaseModel):
     """Complete highlighting results for a single criterion"""
-    
-    criterion_name: str
     
     highlights: List[HighlightSpan]
     

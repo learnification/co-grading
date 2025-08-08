@@ -7,6 +7,7 @@ from app.web.db.models import Assignment
 
 def generate_and_upload_guideline(
     assignment: Assignment,
+    toggles: Dict[int, bool],
     base_url: str,
     canvas_token: SecretStr,
     openai_key: SecretStr
@@ -32,7 +33,7 @@ def generate_and_upload_guideline(
     canvas_api = CanvasAPI(canvas_token, base_url, course_id)
     
     # Generate guideline using AI
-    result = create_rubric_guideline(assignment, openai_key)
+    result = create_rubric_guideline(assignment, toggles, openai_key)
     
     # Upload to Canvas
     canvas_api.upload_file(result, assignment_id, 'rubric_guideline')
@@ -61,7 +62,7 @@ def update_guideline_in_canvas(
     assignment_id = assignment.id
     course_id = assignment.course_id
     logger.info(f"Updating guideline for assignment: {assignment_id}")
-    
+    logger.info(f"guideline: {guideline}")
     canvas_api = CanvasAPI(canvas_token, base_url, course_id)
     
     updated = canvas_api.upload_file(guideline, assignment_id, 'rubric_guideline')

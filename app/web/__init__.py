@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from app.web.db import create_db_and_tables
-from app.web.endpoints import assignment_views, documents_views, score_views, feedback_views
+from app.web.endpoints import assignment_views, documents_views, score_views, highlight_views, feedback_views
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
@@ -22,6 +22,7 @@ app = FastAPI(
 app.include_router(assignment_views.router, prefix="/api/v1/grading", tags=["grading"])
 app.include_router(score_views.router, prefix="/api/v1/scores", tags=["scores"])
 app.include_router(documents_views.router, prefix="/api/v1/documents", tags=["documents"])
+app.include_router(highlight_views.router, prefix="/api/v1/highlight", tags=["highlight"])
 app.include_router(feedback_views.router, prefix="/api/v1/feedback", tags=["feedback"])
 
 app.add_middleware(

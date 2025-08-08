@@ -67,6 +67,40 @@ class CanvasAPI:
         )
         
         return self._confirm_upload(upload_response)
+    def upload_pdf_file(self, assignment_id: int, criterion_id: str, user_id: int, pdf_bytes: bytes) -> Dict[str, Any]:
+        """Uploads a highlighted PDF file to a specific folder for the assignment in Canvas."""
+        filename = f"{assignment_id}_{criterion_id}_{user_id}_highlighted.pdf"
+        content_type = 'application/pdf'
+
+        upload_details = self._announce_file_upload(filename=filename, size=len(pdf_bytes), assignment_id=assignment_id, content_type=content_type)
+        upload_response = self._execute_upload_to_url(
+            upload_details['upload_url'],
+            upload_details['upload_params'],
+            filename,
+            pdf_bytes,
+            content_type
+        )
+
+        return self._confirm_upload(upload_response)
+
+    def download_canvas_file_bytes(self, file_id: int) -> bytes:
+        """Downloads a file from Canvas and returns the bytes."""
+        meta = self.get_file_metadata(file_id)
+        download_url = meta.get("url")
+        if not download_url:
+            raise RuntimeError(f"Download URL not found in metadata for file_id {file_id}")
+        response = requests.get(download_url)
+        response.raise_for_status()
+        return response.content
+
+    def get_highlighted_pdf_file_id(self, assignment_id: int, criterion_id: str, user_id: int) -> Optional[int]:
+        """Find the file ID for a highlighted PDF by searching Canvas files."""
+        search_term = f"{assignment_id}_{criterion_id}_{user_id}_highlighted.pdf"
+        search_results = self._request('get', f"/files?search_term={search_term}")
+        
+        if search_results:
+            return search_results[0].get('id')
+        return None
 
     def upload_root(self, file_data: Dict[str, Any], filename: str) -> Dict[str, Any]:
         """
@@ -287,14 +321,14 @@ class CanvasAPI:
         }
         return self._request('post', '/folders', data=data)
 
-    def _announce_file_upload(self, filename: str, size: int, assignment_id: int) -> Dict[str, Any]:
+    def _announce_file_upload(self, filename: str, size: int, assignment_id: int, content_type: str = 'application/json') -> Dict[str, Any]:
         """Phase 1: Announce the file upload to Canvas in the assignment-specific folder."""
         assignment_folder = self.get_or_create_assignment_folder(assignment_id)
         
         payload = {
             'name': filename,
             'size': size,
-            'content_type': 'application/json',
+            'content_type': content_type,
             'parent_folder_id': assignment_folder['id'],
             'published': False
         }
@@ -420,9 +454,9 @@ class CanvasAPI:
             "Authorization": f"Bearer {self.api_token.get_secret_value()}"
         }
         
-    def _execute_upload_to_url(self, upload_url: str, params: Dict[str, Any], filename: str, data: bytes) -> requests.Response:
+    def _execute_upload_to_url(self, upload_url: str, params: Dict[str, Any], filename: str, data: bytes, content_type="application/json") -> requests.Response:
         """Phase 2: Upload the file data to the URL provided by Canvas."""
-        files = {'file': (filename, BytesIO(data), 'application/json')}
+        files = {'file': (filename, BytesIO(data), content_type)}
         response = requests.post(upload_url, data=params, files=files)
         response.raise_for_status()
         return response

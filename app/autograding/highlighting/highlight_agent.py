@@ -34,8 +34,6 @@ Criterion Instruction: {criterion.instruction}
 
 TASK:
 - Identify ALL text spans in the submission that violate this criterion.
-- ONLY identify text that clearly violates the criterion.
-- Do NOT identify correct usage, examples, or ambiguous cases.
 - Also give a few words before/after the violation for context.
 
 SUBMISSION TO ANALYZE:

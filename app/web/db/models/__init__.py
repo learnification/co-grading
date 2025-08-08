@@ -2,7 +2,7 @@ from .canvas import Course, Assignment, Submission, User, SubmissionType, Rubric
 from .user_settings import CustomSettings
 from .evaluation import (
     RequestGradingDto, GradingFeedback, GradingFeedbackResponse, 
-    GenerateGuidelineRequest, UpdateGuidelineRequest, EnhancedRubricResponse, 
-    HighlightViolationsRequest, CriterionInstruction, CriterionInstructionIDs, 
-    CanvasGuidelineResponse, AutogradeDto, SimpleFeedbackResponse, SimpleFeedback
+    GenerateGuidelineRequest, UpdateGuidelineRequest, 
+    HighlightViolationsRequest, CriterionInstructionIDs, 
+    AutogradeDto, SimpleFeedbackResponse, SimpleFeedback
 )

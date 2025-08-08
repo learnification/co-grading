@@ -208,14 +208,11 @@ async def highlight_document_violations_async(
     tasks = []
 
     for criterion in guideline:
-        if criterion.enabled:
             tasks.append(
                 process_single_criterion_async(
                     criterion, content, file_path, canvas_api, openai_key, submission
                 )
             )
-        else:
-            logger.info(f"Criterion {criterion.criterion} disabled for highlighting")
 
     all_results = await asyncio.gather(*tasks)
     

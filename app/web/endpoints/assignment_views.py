@@ -1,12 +1,13 @@
 from app.web.db.models.evaluation import AutogradeThresholdRequest, AutogradeToggleRequest, AutogradeCheckRequest, ThresholdCheckRequest
 from celery.result import AsyncResult
 from app.celery import celery_app
-from fastapi import APIRouter, Header
+from fastapi import APIRouter, Header, HTTPException
 from app.web.db.models import RequestGradingDto
 from app.web.tasks import schedule_evaluation
 from app.web.utils import logger
 from typing import Optional
 from pydantic import SecretStr
+from app.web.utils import CanvasAPI
 
 router = APIRouter()
 

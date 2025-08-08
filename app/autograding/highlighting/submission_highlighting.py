@@ -205,13 +205,18 @@ async def highlight_document_violations_async(
     
     logger.info(f"Highlighting {len(guideline)} criteria in parallel")
     
-    tasks = [
-        process_single_criterion_async(
-            criterion, content, file_path, canvas_api, openai_key, submission
-        )
-        for criterion in guideline
-    ]
-    
+    tasks = []
+
+    for criterion in guideline:
+        if criterion.enabled:
+            tasks.append(
+                process_single_criterion_async(
+                    criterion, content, file_path, canvas_api, openai_key, submission
+                )
+            )
+        else:
+            logger.info(f"Criterion {criterion.criterion} disabled for highlighting")
+
     all_results = await asyncio.gather(*tasks)
     
     end_time = time.time()
@@ -230,7 +235,7 @@ async def upload_highlighted_pdfs_async(canvas_api: CanvasAPI, all_results: List
             assignment_id=result["assignment_id"],
             criterion_id=result["criterion_id"],
             user_id=result["user_id"],
-            file_data=result["pdf_bytes"]
+            pdf_bytes=result["pdf_bytes"]
         )
     
     await asyncio.gather(*[upload_single_pdf(result) for result in all_results])

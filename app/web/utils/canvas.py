@@ -176,7 +176,7 @@ class CanvasAPI:
         search_results = self._search_file(appendedFilename)
 
         if not search_results:
-            raise HTTPException(status_code=404, detail=f"File {appendedFilename} for assignment {assignment_id} and {filename} not found.")
+            raise FileNotFoundError(f"File {appendedFilename} for assignment {assignment_id} and {filename} not found.")
 
         # Since we have unique filenames, just take the first result
         target_file = search_results[0]

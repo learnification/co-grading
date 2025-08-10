@@ -150,14 +150,12 @@ def process_single_criterion(
     logger.info(f"Processing criterion: {criterion.criterion}")
     
     violations = find_criterion_violations(content, criterion, openai_key)
-    violations_found_time = time.time()
-    logger.info(f"Criterion {criterion.criterion} took {(violations_found_time - criterion_start_time):.3f}s to find violations")
+    
     highlighting_result = highlight_violations_in_pdf(
         pdf_path=file_path,
         criterion_highlights=violations
     )
-    highlighting_time = time.time()
-    logger.info(f"Criterion {criterion.criterion} took {(highlighting_time - violations_found_time):.3f}s to highlight")
+
     criterion_end_time = time.time()
     logger.info(f"Criterion {criterion.criterion} took {(criterion_end_time - criterion_start_time):.3f}s to process")
     
@@ -208,11 +206,14 @@ async def highlight_document_violations_async(
     tasks = []
 
     for criterion in guideline:
-            tasks.append(
-                process_single_criterion_async(
-                    criterion, content, file_path, canvas_api, openai_key, submission
+            if criterion.enabled:
+                tasks.append(
+                    process_single_criterion_async(
+                        criterion, content, file_path, canvas_api, openai_key, submission
+                    )
                 )
-            )
+            else:
+                logger.info(f"Criterion {criterion.criterion} disabled for highlighting")
 
     all_results = await asyncio.gather(*tasks)
     

@@ -1,21 +1,22 @@
 from dotenv import load_dotenv
 from typing import List, Dict
 from pydantic import SecretStr
-from app.web.db.models import Assignment, RubricCriterion, EnhancedRubricResponse
+from app.web.db.models import Assignment
+from app.autograding.guidelines.models import GeneratedGuideline
 from app.autograding.llms import build_llm_for_task
 from app.web.utils import logger
 
 load_dotenv()
 
 
-def create_rubric_guideline(assignment: Assignment, openai_key: SecretStr) -> List[Dict]:
+def create_rubric_guideline(assignment: Assignment, toggles: Dict[str, bool], openai_key: SecretStr) -> List[Dict]:
     """
     Workflow for enhancing a rubric with AI-generated sub-rules.
     This should be run once per assignment.
     """
     llm_name = 'gpt-4.1-mini-2025-04-14'
 
-    llm = build_llm_for_task(llm_name, openai_key, streaming=False).with_structured_output(EnhancedRubricResponse)
+    llm = build_llm_for_task(llm_name, openai_key, streaming=False).with_structured_output(GeneratedGuideline)
 
     criteria_list = assignment.rubric
     assignment_description = assignment.description
@@ -44,7 +45,7 @@ Return instructions for each criterion listed above.
     """
     try:
         response = llm.invoke(prompt)
-        return _map_to_frontend_format(response, assignment.rubric)
+        return _map_to_frontend_format(response, assignment, toggles)
         
     except Exception as e:
         print(f"Error generating rubric guidelines: {e}")
@@ -58,8 +59,9 @@ Return instructions for each criterion listed above.
         ]
     
 def _map_to_frontend_format(
-    llm_response: EnhancedRubricResponse, 
-    original_rubric: List[RubricCriterion]
+    llm_response: GeneratedGuideline, 
+    assignment: Assignment,
+    toggles: Dict[str, bool]
 ) -> List[Dict]:
     """Map LLM response to frontend-ready format with IDs"""
     
@@ -69,7 +71,7 @@ def _map_to_frontend_format(
     }
     
     result = []
-    for criterion in original_rubric:
+    for criterion in assignment.rubric:
         instruction = instruction_map.get(
             criterion.description, 
             "No specific AI guidance available for this criterion"
@@ -78,7 +80,8 @@ def _map_to_frontend_format(
         result.append({
             "id": criterion.id,
             "criterion": criterion.description,
-            "instruction": instruction
+            "instruction": instruction,
+            "enabled": toggles.get(criterion.id,True)
         })
     
     return result

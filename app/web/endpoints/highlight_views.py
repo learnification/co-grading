@@ -18,6 +18,7 @@ def generate_guideline(
     try:
         return generate_and_upload_guideline(
             assignment=request.assignment,
+            toggles=request.toggles,
             base_url=request.baseURL,
             canvas_token=x_canvas_token,
             openai_key=x_user_openai_key
@@ -64,6 +65,9 @@ def get_guideline(
             base_url=base_url,
             canvas_token=x_canvas_token
         )
+    except FileNotFoundError:
+        logger.info(f"No guidelines file found for assignment {assignment_id}, returning empty guidelines")
+        return {"guideline": {}}
     except Exception as e:
         logger.error(f"Error in get_guideline: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to retrieve guideline")
@@ -76,8 +80,6 @@ async def highlight_violations(
     x_canvas_token: SecretStr = Header(..., alias="X-Canvas-Token")
 ):
     try:
-        logger.info(f"Received request to highlight violations for submission {request.submission}")
-        
         canvas_api = CanvasAPI(api_token=x_canvas_token, domain=request.baseURL, course_id=request.course_id)
 
         all_highlights = await highlight_document_violations_async(

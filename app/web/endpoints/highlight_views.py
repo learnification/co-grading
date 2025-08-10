@@ -67,7 +67,7 @@ def get_guideline(
         )
     except FileNotFoundError:
         logger.info(f"No guidelines file found for assignment {assignment_id}, returning empty guidelines")
-        return {"guidelines": {}}
+        return {"guideline": {}}
     except Exception as e:
         logger.error(f"Error in get_guideline: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to retrieve guideline")

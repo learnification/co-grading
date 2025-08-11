@@ -21,7 +21,7 @@ class GradingFeedback(BaseModel):
 class AutogradeDto(BaseModel):
     assignment: Assignment
     submission: Submission
-    #settings: CustomSettings
+    settings: CustomSettings
 
 class SimpleFeedback(BaseModel):
     feedback: str

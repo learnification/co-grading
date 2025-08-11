@@ -35,17 +35,22 @@ Return your response in this exact format:
 }}
 
 Do not include anything outside this object.
+
+Grade the assignment with a strictness level of {custom_settings.strictness.value}.
+Provide feedback with a tone of {custom_settings.tone.value} and a length of {custom_settings.length.value}.
 """
 
 
 async def grade_criterion(llm, criterion_id: str, criterion_name: str, 
-                         rubric_text: str, submission_text: str) -> tuple:
+                         rubric_text: str, submission_text: str, settings) -> tuple:
     """Grade a single criterion using the LLM"""
     prompt = CRITERION_PROMPT.format(
         criterion_name=criterion_name,
         rubric_text=rubric_text,
-        submission_text=submission_text
+        submission_text=submission_text,
+        custom_settings=settings
     )
+    print(f"DEBUG: {prompt}")
     
     grader = llm.with_structured_output(SimpleFeedback)
     result = await grader.ainvoke(prompt)
@@ -57,11 +62,11 @@ async def grade_criterion(llm, criterion_id: str, criterion_name: str,
     }
 
 
-async def autograde_submission(llm, submission_text: str, rubrics: Dict) -> Dict:
+async def autograde_submission(llm, submission_text: str, rubrics: Dict, settings) -> Dict:
     """Grade all criteria for a submission concurrently"""
     tasks = [
         grade_criterion(llm, crit_id, rubric_data['name'], 
-                       rubric_data['rubric_text'], submission_text)
+                       rubric_data['rubric_text'], submission_text, settings)
         for crit_id, rubric_data in rubrics.items()
     ]
     
@@ -97,6 +102,6 @@ async def autograde(request: AutogradeDto, openai_key: str = None) -> Dict:
     
     rubrics = _prepare_rubrics(request.assignment)
     
-    results = await autograde_submission(llm, content, rubrics)
+    results = await autograde_submission(llm, content, rubrics, request.settings)
     
     return {"grades": results} 

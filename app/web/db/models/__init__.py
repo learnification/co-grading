@@ -4,5 +4,5 @@ from .evaluation import (
     RequestGradingDto, GradingFeedback, GradingFeedbackResponse, 
     GenerateGuidelineRequest, UpdateGuidelineRequest, EnhancedRubricResponse, 
     HighlightViolationsRequest, CriterionInstruction, CriterionInstructionIDs, 
-    CanvasGuidelineResponse
+    CanvasGuidelineResponse, AutogradeDto, SimpleFeedbackResponse, SimpleFeedback
 )

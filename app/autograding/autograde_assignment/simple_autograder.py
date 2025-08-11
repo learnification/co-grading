@@ -50,7 +50,6 @@ async def grade_criterion(llm, criterion_id: str, criterion_name: str,
         submission_text=submission_text,
         custom_settings=settings
     )
-    print(f"DEBUG: {prompt}")
     
     grader = llm.with_structured_output(SimpleFeedback)
     result = await grader.ainvoke(prompt)

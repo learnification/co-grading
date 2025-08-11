@@ -51,7 +51,7 @@ class CanvasAPI:
                     existing_data['currentStatus'] = file_data.get('currentStatus', existing_data.get('currentStatus'))
                     file_data = existing_data
                             
-            except HTTPException as e:
+            except FileNotFoundError as e:
                 # File doesn't exist, which is fine - just upload the new data
                 pass
         
@@ -171,7 +171,6 @@ class CanvasAPI:
         """
 
         appendedFilename = f"{assignment_id}_{filename}.json"
-        print(f"[DEBUG] Searching for file: {appendedFilename}")
         
         search_results = self._search_file(appendedFilename)
 

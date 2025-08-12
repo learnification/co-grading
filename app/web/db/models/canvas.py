@@ -56,7 +56,7 @@ class RubricRating(BaseModel):
     id: str
     description: Optional[str] = None
     long_description: Optional[str] = None
-    points: int
+    points: float
 
 
 class RubricCriterion(BaseModel):
@@ -67,7 +67,7 @@ class RubricCriterion(BaseModel):
     id: str
     description: Optional[str] = None
     long_description: Optional[str] = None
-    points: int
+    points: float
     criterion_use_range: bool
     ratings: Optional[List[RubricRating]] = None
 

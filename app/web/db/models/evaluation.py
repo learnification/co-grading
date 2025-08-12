@@ -25,7 +25,7 @@ class AutogradeDto(BaseModel):
 
 class SimpleFeedback(BaseModel):
     feedback: str
-    score: int
+    score: float
 
 class SimpleFeedbackResponse(BaseModel):
     scores: List[SimpleFeedback]

@@ -106,7 +106,7 @@ class Assignment(BaseModel):
 class RubricCriterionAssessment(BaseModel):
   rating_id: str
   comments: str = ""
-  points: Optional[int] = None
+  points: Optional[float] = None
 
 class Submission(BaseModel):
     """

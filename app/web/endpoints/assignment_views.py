@@ -2,12 +2,14 @@ from app.web.db.models.evaluation import AutogradeThresholdRequest, AutogradeTog
 from celery.result import AsyncResult
 from app.celery import celery_app
 from fastapi import APIRouter, Header, HTTPException
-from app.web.db.models import RequestGradingDto
+from app.web.db.models import RequestGradingDto, AutogradeDto, SimpleFeedbackResponse, SimpleFeedback
 from app.web.tasks import schedule_evaluation
 from app.web.utils import logger
 from typing import Optional
 from pydantic import SecretStr
 from app.web.utils import CanvasAPI
+from app.autograding.autograde_assignment import autograde
+import time
 
 router = APIRouter()
 
@@ -30,6 +32,19 @@ def generate_grading_feedback(
     # Enqueue the Celery task
     task = schedule_evaluation.delay(request_data)
     return {"task_id": task.id}
+
+@router.post("/simple_autograde", response_model=dict)
+async def simple_autograde(
+    request: AutogradeDto,
+    x_user_openai_key: Optional[SecretStr] = Header(None, alias="X-User-OpenAI-Key")
+):
+    """Simple autograding endpoint that processes a submission and returns grades"""
+    start = time.time()
+    results = await autograde(request, x_user_openai_key)
+    end = time.time()
+    print(f"Took {end-start} s total")
+    
+    return results
 
 
 @router.get("/status/{task_id}", response_model=dict)

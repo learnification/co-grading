@@ -3,5 +3,6 @@ from .user_settings import CustomSettings
 from .evaluation import (
     RequestGradingDto, GradingFeedback, GradingFeedbackResponse, 
     GenerateGuidelineRequest, UpdateGuidelineRequest, 
-    HighlightViolationsRequest, CriterionInstructionIDs
+    HighlightViolationsRequest, CriterionInstructionIDs, 
+    AutogradeDto, SimpleFeedbackResponse, SimpleFeedback
 )

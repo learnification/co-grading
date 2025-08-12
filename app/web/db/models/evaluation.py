@@ -18,6 +18,18 @@ class GradingFeedback(BaseModel):
     score: float
     feedback: str
 
+class AutogradeDto(BaseModel):
+    assignment: Assignment
+    submission: Submission
+    settings: CustomSettings
+
+class SimpleFeedback(BaseModel):
+    feedback: str
+    score: int
+
+class SimpleFeedbackResponse(BaseModel):
+    scores: List[SimpleFeedback]
+
 
 GradingFeedbackResponse = Dict[int, GradingFeedback]
 

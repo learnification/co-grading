@@ -44,7 +44,7 @@ pip install -r requirements.txt
 
 # Running the Application
 
-1. Activate the virtual environment:
+1. Ensure your virtual environment is activated (if not already, follow below):
 
 ```bash
 # On macOS, WSL, Linux:

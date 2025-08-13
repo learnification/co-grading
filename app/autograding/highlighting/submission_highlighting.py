@@ -65,6 +65,30 @@ def highlight_violations_in_pdf(
     if not pdf_path.exists():
         raise FileNotFoundError(f"PDF file not found: {pdf_path}")
     
+    def find_closest_context_match(violation_rect, context_rects_with_pages, current_page_num, max_distance=500):
+        """Find the context that's closest to the violation across all pages"""
+        closest_context = None
+        min_distance = float('inf')
+        
+        for page_num, context_rect in context_rects_with_pages:
+            # Calculate distance between centers
+            v_center = (violation_rect.x0 + violation_rect.x1) / 2, (violation_rect.y0 + violation_rect.y1) / 2
+            c_center = (context_rect.x0 + context_rect.x1) / 2, (context_rect.y0 + context_rect.y1) / 2
+            
+            # If same page, use normal distance
+            if page_num == current_page_num:
+                distance = ((v_center[0] - c_center[0]) ** 2 + (v_center[1] - c_center[1]) ** 2) ** 0.5
+            else:
+                # If different page, add page penalty
+                page_penalty = 200  # Penalty for cross-page matching
+                distance = ((v_center[0] - c_center[0]) ** 2 + (v_center[1] - c_center[1]) ** 2) ** 0.5 + page_penalty
+            
+            if distance < min_distance and distance < max_distance:
+                min_distance = distance
+                closest_context = (page_num, context_rect)
+        
+        return closest_context
+    
     try:
         doc = fitz.open(str(pdf_path))
         highlights_added = 0
@@ -73,53 +97,60 @@ def highlight_violations_in_pdf(
             for highlight_span in criterion_highlights.highlights:
                 found_this_violation = False
                 
+                # Find ALL context occurrences across ALL pages
+                all_context_rects = []
                 for page_num in range(len(doc)):
                     page = doc[page_num]
-
                     context_rects = page.search_for(highlight_span.context)
-                    violation_rects = page.search_for(highlight_span.violating_text)
+                    for rect in context_rects:
+                        all_context_rects.append((page_num, rect))
+                
+                # Break violation text into searchable segments
+                violation_segments = []
+                text = highlight_span.violating_text
+                
+                # Split by sentences first
+                sentences = text.split('.')
+                for sentence in sentences:
+                    sentence = sentence.strip()
+                    if sentence and len(sentence) > 10:
+                        violation_segments.append(sentence)
+                
+                # If no sentences, split by newlines
+                if not violation_segments:
+                    lines = text.split('\n')
+                    for line in lines:
+                        line = line.strip()
+                        if line and len(line) > 10:
+                            violation_segments.append(line)
+                
+                # If still nothing, just use the whole text
+                if not violation_segments:
+                    violation_segments = [text]
+                
+                # Search each page for each segment
+                for page_num in range(len(doc)):
+                    page = doc[page_num]
                     
-                    if not violation_rects or not context_rects:
-                        logger.info(f"No violations or context found on page {page_num + 1}")
-                        continue
-                    
-                    for violation_rect in violation_rects:
-                        for context_rect in context_rects:
-                            if context_rect.intersects(violation_rect):
-                                highlight = page.add_highlight_annot(violation_rect)
-                                highlights_added += 1
-                                highlight.set_colors(stroke=(1.0, 1.0, 0.0))
-                                highlight.update()
-                                found_this_violation = True
-                                break
+                    for segment in violation_segments:
+                        segment_rects = page.search_for(segment)
+                        
+                        if segment_rects:
+                            for rect in segment_rects:
+                                # Find the closest context across ALL pages
+                                closest_context = find_closest_context_match(rect, all_context_rects, page_num, max_distance=500)
+                
+                                if closest_context:
+                                    highlight = page.add_highlight_annot(rect)
+                                    highlight.set_info(content=highlight_span.explanation)
+                                    highlights_added += 1
+                                    highlight.set_colors(stroke=(1.0, 1.0, 0.0))
+                                    highlight.update()
+                                    found_this_violation = True
+                                    logger.info(f"Found segment '{segment[:30]}...' on page {page_num + 1}")
                     
                     if found_this_violation:
                         break
-            
-                if not found_this_violation:
-                    logger.info(f"No exact match found, trying cross-page detection for: '{highlight_span.violating_text[:50]}...'")
-                    
-                    for page_num in range(len(doc) - 1):
-                        current_page = doc[page_num]
-                        next_page = doc[page_num + 1]
-                        
-                        cross_page_instances = find_cross_page_text(
-                            current_page, next_page, highlight_span.violating_text
-                        )
-                        
-                        if cross_page_instances:
-                            found_this_violation = True
-                            for rects in cross_page_instances:
-
-                                for page_idx, rect in [(page_num, rects[0]), (page_num + 1, rects[1])]:
-                                    page = doc[page_idx]
-                                    highlight = page.add_highlight_annot(rect)
-                                    highlight.set_colors(stroke=(1.0, 1.0, 0.0))
-                                    
-                                    highlight.update()
-                                    highlights_added += 1
-                                    logger.info(f"Added cross-page highlight on page {page_idx + 1}")
-                            break
                 
                 if not found_this_violation:
                     logger.warning(f"Violation text not found anywhere: '{highlight_span.violating_text[:50]}...'")

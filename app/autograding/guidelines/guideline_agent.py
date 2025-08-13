@@ -35,6 +35,13 @@ For each criterion in the grading rubric, provide a single, concise instruction 
 
 The instruction should be specific, actionable, and easy for an AI to follow. It should help the AI highlight relevant text for the TA.
 
+IMPORTANT: 
+- Focus on highlighting content instructions, and instructions only
+- Highlight ONLY the problematic or relevant text, not correct text
+- Keep instructions simple and focused on what to highlight
+- Do NOT suggest highlighting for correct sections
+- Do NOT add analysis instructions like "assess quality" or "note frequency"
+
 Here is the assignment description:
 {assignment_description}
 

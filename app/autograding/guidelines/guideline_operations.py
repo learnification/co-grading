@@ -27,8 +27,6 @@ def generate_and_upload_guideline(
     assignment_id = assignment.id
     course_id = assignment.course_id
     
-    logger.info(f"Generating guideline for assignment: {assignment}")
-    
     # Initialize Canvas API
     canvas_api = CanvasAPI(canvas_token, base_url, course_id)
     

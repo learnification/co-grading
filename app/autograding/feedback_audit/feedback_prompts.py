@@ -45,7 +45,7 @@ def generate_llm_feedback_messages(
         except (ValueError, TypeError):
             pass
 
-    system_content = f"""You are an AI assistant evaluating the strength of a human grader's feedback on a student's work. Your primary goal is to determine if the feedback is actionable and provides clear justification for the assigned score/rating.
+    system_content = f"""You are an AI assistant evaluating the strength of a human grader's feedback on a student's work. Your primary goal is to determine if the feedback is actionable and provides clear justification for the assigned score/rating, in a concise manner.
 
 CRITICAL: Your evaluation strictness must be INVERSELY proportional to the student's score:
 - HIGH SCORES (80%+): Be SIGNIFICANTLY MORE LENIENT - specific acknowledgment of what was done well is sufficient
@@ -100,7 +100,11 @@ Possible Ratings:
 Human Grader's Assessment for this Criterion:
 Selected Rating: {selected_rating_description} (Points from Rubric: {selected_rating_points_from_rubric})
 Awarded Points: {awarded_points_by_user} (Score: {percentage_score})
-Comments: "{rubric_assessment.comments}""" 
+Comments: "{rubric_assessment.comments}
+
+----
+ENSURE YOUR RESPONSE IS CONCISE, STRAIGHTFORWARD AND IMPROVED FOR BREVITY. TRY TO KEEP UNDER 75 WORDS. LESS THE BETTER.
+""" 
 
     return [
         {"role": "system", "content": system_content},

@@ -34,7 +34,10 @@ Criterion Instruction: {criterion.instruction}
 
 TASK:
 - Identify ALL text spans in the submission that violate this criterion.
-- Also give a few words before/after the violation for context.
+- For each violation, provide:
+  * The exact violating text
+  * Context (a few words before/after for clarity)
+  * Explanation (why this text violates the criterion)
 
 SUBMISSION TO ANALYZE:
 {submission_text}""".strip()

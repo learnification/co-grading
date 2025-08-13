@@ -236,7 +236,7 @@ class CanvasAPI:
         else:
             return file_data
 
-    def list_files_in_assignment_folder(self, assignment_id: int) -> List[Dict[str, Any]]:
+    def list_files_in_assignment_folder(self, assignment_id: int, application_type='json') -> List[Dict[str, Any]]:
         """
         Lists all files in the assignment-specific folder using search API.
         Used mainly by approval counter endpoint, since it needs to check all audit files for an assignment
@@ -251,7 +251,7 @@ class CanvasAPI:
         assignment_folder = self.get_or_create_assignment_folder(assignment_id)
         
         try:
-            files = self._global_request('get', f"/folders/{assignment_folder['id']}/files")
+            files = self._global_request('get', f"/folders/{assignment_folder['id']}/files?content_types[]=application/{application_type}&per_page=100")
             return files
         except Exception as e:
             search_results = self._search_file(".json", folder_id=assignment_folder['id'], per_page=100)
@@ -435,7 +435,7 @@ class CanvasAPI:
         url = f"{self.domain}/api/v1{endpoint}"
         headers = kwargs.pop('headers', {})
         headers.update(self._get_headers())
-
+        print(f'DEBUG: REQUEST: {url}')
         response = requests.request(method, url, headers=headers, **kwargs)
         response.raise_for_status()
 

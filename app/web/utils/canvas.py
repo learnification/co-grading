@@ -463,7 +463,8 @@ class CanvasAPI:
     def _confirm_upload(self, response: requests.Response) -> Dict[str, Any]:
         """Phase 3: Confirm the upload with Canvas."""
         if 'Location' in response.headers:
-            confirm_url = response.headers['Location'].replace(self.base_url, '')
+            url = f"{self.domain}/api/v1"
+            confirm_url = response.headers['Location'].replace(url, '')
             return self._request('get', confirm_url)
         else:
             try:

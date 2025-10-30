@@ -5,7 +5,6 @@ from app.web.utils.canvas import CanvasAPI
 from app.web.utils import logger
 
 
-# Static tutorial assignment configuration
 ASSIGNMENT_NAME = "Cograding Tutorial Assignment"
 ASSIGNMENT_DESCRIPTION = "Question: In the context of Chrome extension development, what is a Content Script, and how does it differ from a Background Script?"
 ASSIGNMENT_POINTS_POSSIBLE = 15
@@ -43,7 +42,7 @@ def create_tutorial_assignment(canvas_api: CanvasAPI) -> Dict[str, Any]:
     Raises:
         HTTPException: If assignment already exists or creation fails
     """
-    # Check if assignment already exists
+
     assignments = canvas_api.list_assignments()
     if any(assignment.get('name') == ASSIGNMENT_NAME for assignment in assignments):
         raise HTTPException(
@@ -51,7 +50,6 @@ def create_tutorial_assignment(canvas_api: CanvasAPI) -> Dict[str, Any]:
             detail=f"Assignment '{ASSIGNMENT_NAME}' already exists"
         )
 
-    # Get test student ID
     try:
         test_student = canvas_api.get_test_student()
         test_student_id = test_student.get('id')
@@ -71,7 +69,6 @@ def create_tutorial_assignment(canvas_api: CanvasAPI) -> Dict[str, Any]:
     
     logger.info(f"Creating tutorial assignment for test student {test_student_id}")
 
-    # Create assignment
     assignment = canvas_api.create_assignment(
         name=ASSIGNMENT_NAME,
         description=ASSIGNMENT_DESCRIPTION,
@@ -81,7 +78,7 @@ def create_tutorial_assignment(canvas_api: CanvasAPI) -> Dict[str, Any]:
     assignment_id = assignment['id']
     logger.info(f"Created assignment with ID {assignment_id}")
 
-    # Build criteria with ratings (Full, Partial, No Marks for each criterion)
+    # Build criteria with ratings
     canvas_criteria = []
     for criterion in CRITERIA:
         full_points = criterion['points']
@@ -97,7 +94,6 @@ def create_tutorial_assignment(canvas_api: CanvasAPI) -> Dict[str, Any]:
             ],
         })
     
-    # Create rubric
     rubric = canvas_api.create_rubric(
         title=RUBRIC_TITLE,
         assignment_id=assignment_id,
@@ -105,7 +101,6 @@ def create_tutorial_assignment(canvas_api: CanvasAPI) -> Dict[str, Any]:
     )
     logger.info(f"Created rubric with {len(CRITERIA)} criteria")
 
-    # Upload and submit sample file
     if TUTORIAL_SUBMISSION_FILE_PATH.exists():
         logger.info(f"Uploading sample submission from {TUTORIAL_SUBMISSION_FILE_PATH}")
         with open(TUTORIAL_SUBMISSION_FILE_PATH, "rb") as f:

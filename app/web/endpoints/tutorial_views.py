@@ -29,7 +29,7 @@ async def create_tutorial_assignment(
         )
 
         tutorial_data = {
-            "id": tutorialId
+            "tutorialId": tutorialId
         }
         
         canvas_api.upload_root(tutorial_data, "tutorial")

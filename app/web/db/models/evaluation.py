@@ -97,3 +97,11 @@ class HighlightViolationsRequest(BaseModel):
     submission: Submission
     baseURL: str
     guideline: List[CriterionInstructionIDs]
+
+class RubricCriterionInput(BaseModel):
+    description: str
+    points: float
+    long_description: Optional[str] = None
+
+class CreateTutorialAssignmentRequest(BaseModel):
+    courseId: int

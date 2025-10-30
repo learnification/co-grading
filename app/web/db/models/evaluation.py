@@ -64,6 +64,9 @@ class AutogradeThresholdRequest(BaseModel):
 
 class ThresholdCheckRequest(BaseModel):
     courseId: int
+
+class TutorialCheckRequest(BaseModel):
+    courseId: int
  
 
 class AIFeedbackStatus(str, Enum):

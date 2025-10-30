@@ -24,13 +24,19 @@ async def create_tutorial_assignment(
             course_id=request.courseId
         )
 
-        rubric = create_tutorial_assignment_service(
+        tutorialId = create_tutorial_assignment_service(
             canvas_api=canvas_api,
         )
 
+        tutorial_data = {
+            "id": tutorialId
+        }
+        
+        canvas_api.upload_root(tutorial_data, "tutorial")
+
         return {
             "courseId": request.courseId,
-            "rubric": rubric,
+            "tutorialId": tutorialId,
         }
         
     except Exception as e:

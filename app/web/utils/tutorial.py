@@ -127,4 +127,4 @@ def create_tutorial_assignment(canvas_api: CanvasAPI) -> Dict[str, Any]:
     else:
         logger.warning(f"Sample submission file not found at {TUTORIAL_SUBMISSION_FILE_PATH}, skipping submission")
 
-    return rubric
+    return assignment_id

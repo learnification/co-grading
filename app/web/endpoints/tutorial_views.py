@@ -4,7 +4,7 @@ from app.web.utils import logger, CanvasAPI
 from app.web.utils.tutorial import create_tutorial_assignment as create_tutorial_assignment_service
 from typing import Optional
 from pydantic import SecretStr
-
+import time
 router = APIRouter()
 
 
@@ -61,6 +61,7 @@ async def get_tutorial_id(
     Returns:
     - JSON content of the tutorial file
     """
+    start = time.time()
     try:
 
         canvas_api = CanvasAPI(
@@ -70,9 +71,10 @@ async def get_tutorial_id(
         )
         
         # Get the threshold file (course-wide)
-        threshold_data = canvas_api.get_root_file("tutorial")
-        
-        return threshold_data
+        tutorial_data = canvas_api.get_root_file("tutorial")
+        end = time.time()
+        print(f"took {end-start:.2f}s")
+        return tutorial_data
         
     except Exception as e:
         logger.error(f"Error getting tutorial file: {str(e)}")

@@ -5,10 +5,10 @@ from app.web.utils.canvas import CanvasAPI
 from app.web.utils import logger
 
 
-ASSIGNMENT_NAME = "Cograding Tutorial Assignment"
+ASSIGNMENT_NAME = "Cograding Sandbox"
 ASSIGNMENT_DESCRIPTION = "Question: In the context of Chrome extension development, what is a Content Script, and how does it differ from a Background Script?"
 ASSIGNMENT_POINTS_POSSIBLE = 15
-RUBRIC_TITLE = "Cograding Tutorial Rubric"
+RUBRIC_TITLE = "Cograding Sandbox Rubric"
 SUBMISSION_FILENAME = "tutorial.pdf"
 
 _PROJECT_ROOT = Path(__file__).resolve().parents[3]
@@ -123,3 +123,10 @@ def create_tutorial_assignment(canvas_api: CanvasAPI) -> Dict[str, Any]:
         logger.warning(f"Sample submission file not found at {TUTORIAL_SUBMISSION_FILE_PATH}, skipping submission")
 
     return assignment_id
+
+def tutorial_assignment_enabled(canvas_api: CanvasAPI, assignment_id: int) -> bool:
+    try:
+        assignment = canvas_api.get_assignment(assignment_id)
+        return True
+    except:
+        return False

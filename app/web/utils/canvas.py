@@ -434,7 +434,10 @@ class CanvasAPI:
         Lists all assignments in the current course using Canvas API.
         """
         return self._request('get', '/assignments?include[]=overrides')
-
+    
+    def get_assignment(self, assignment_id: int) -> List[Dict[str, Any]]:
+            return self._request('get', f'/assignments/{assignment_id}')
+    
     def create_assignment(
         self,
         name: str,

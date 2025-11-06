@@ -1,12 +1,10 @@
 import requests
 from typing import Optional, Dict, Any, List
 import json
-import re
 from io import BytesIO
 from fastapi import HTTPException
 from pydantic import SecretStr
-from fastapi import HTTPException
-from pydantic import SecretStr
+from app.web.utils.logger import logger
 
 class CanvasAPI:
     def __init__(self, api_token: SecretStr, domain: str, course_id: int):
@@ -67,6 +65,7 @@ class CanvasAPI:
         )
         
         return self._confirm_upload(upload_response)
+
     def upload_pdf_file(self, assignment_id: int, criterion_id: str, user_id: int, pdf_bytes: bytes) -> Dict[str, Any]:
         """Uploads a highlighted PDF file to a specific folder for the assignment in Canvas."""
         filename = f"{assignment_id}_{criterion_id}_{user_id}_highlighted.pdf"
@@ -377,8 +376,7 @@ class CanvasAPI:
                 grader_data = self._global_request('get', f"/users/{grader_id}")
                 grader_name = grader_data.get("name", "Unknown Grader")
             except Exception as grader_error:
-                print(f"[DEBUG] Could not get grader name: {grader_error}")
-                pass
+                logger.debug(f"Could not get grader name: {grader_error}")
         
         return grader_name
 
@@ -403,7 +401,172 @@ class CanvasAPI:
         }
         return self._request('post', '/folders', data=data)
 
+    def get_test_student(self) -> Dict[str, Any]:
+        """
+        Gets the test student for the current course.
+        
+        Returns:
+            Dictionary containing test student information with 'id' key
+        """
+        return self._request('get', '/student_view_student')
 
+    def submit_assignment(self, assignment_id: int, file_id: int, user_id: Optional[int] = None) -> Dict[str, Any]:
+        """
+        Submits an assignment on behalf of the current user (or a specific user if user_id is provided)
+        using previously uploaded file ID.
+        """
+        endpoint = f"/assignments/{assignment_id}/submissions"
+
+        data: Dict[str, Any] = {
+            'submission[submission_type]': 'online_upload',
+        }
+
+        data[f'submission[file_ids][]'] = int(file_id)
+
+        # Optional submit on behalf of user
+        if user_id is not None:
+            data['submission[user_id]'] = int(user_id)
+
+        return self._request('post', endpoint, data=data)
+
+    def list_assignments(self) -> List[Dict[str, Any]]:
+        """
+        Lists all assignments in the current course using Canvas API.
+        """
+        return self._request('get', '/assignments?include[]=overrides')
+    
+    def get_assignment(self, assignment_id: int) -> List[Dict[str, Any]]:
+            return self._request('get', f'/assignments/{assignment_id}')
+    
+    def create_assignment(
+        self,
+        name: str,
+        description: str,
+        points_possible: float,
+        student_ids: List[int],
+        submission_types: List[str] = None,
+        allowed_extensions: List[str] = None,
+        allowed_attempts: int = -1,
+        published: bool = True,
+        grading_type: str = 'points',
+    ) -> Dict[str, Any]:
+        """
+        Creates an assignment with student-specific overrides.
+        
+        Args:
+            name: Assignment name
+            description: Assignment description
+            points_possible: Total points for the assignment
+            student_ids: List of student IDs to restrict visibility to
+            submission_types: List of allowed submission types (default: ['online_upload'])
+            allowed_extensions: List of allowed file extensions (default: ['pdf'])
+            allowed_attempts: Number of allowed attempts (-1 for unlimited)
+            published: Whether to publish the assignment immediately
+            grading_type: Type of grading (default: 'points')
+            
+        Returns:
+            Dictionary containing the created assignment data
+        """
+        if submission_types is None:
+            submission_types = ['online_upload']
+        if allowed_extensions is None:
+            allowed_extensions = ['pdf']
+            
+        payload = {
+            'assignment[name]': name,
+            'assignment[description]': description,
+            'assignment[points_possible]': points_possible,
+            'assignment[grading_type]': grading_type,
+            'assignment[submission_types][]': submission_types,
+            'assignment[allowed_extensions][]': allowed_extensions,
+            'assignment[allowed_attempts]': allowed_attempts,
+            'assignment[published]': published,
+            'assignment[only_visible_to_overrides]': True,
+            'assignment[assignment_overrides][0][student_ids][]': student_ids,
+        }
+        return self._request('post', '/assignments', data=payload)
+
+    def create_rubric(
+        self,
+        title: str,
+        assignment_id: int,
+        criteria: List[Dict[str, Any]],
+        free_form_criterion_comments: bool = False,
+        use_for_grading: bool = True,
+    ) -> Dict[str, Any]:
+        """
+        Creates a rubric with criteria and associates it to an assignment.
+        
+        Args:
+            title: Rubric title
+            assignment_id: ID of the assignment to associate the rubric with
+            criteria: List of criterion dictionaries, each containing:
+                - description: str
+                - points: float
+                - long_description: Optional[str]
+                - ratings: List[Dict] with 'description' and 'points' keys
+            free_form_criterion_comments: Whether to allow free-form comments
+            use_for_grading: Whether to use the rubric for grading
+            
+        Returns:
+            Dictionary containing the created rubric and rubric_association data
+        """
+        payload = {
+            'rubric[title]': title,
+            'rubric[free_form_criterion_comments]': free_form_criterion_comments,
+            'rubric_association[association_id]': assignment_id,
+            'rubric_association[association_type]': 'Assignment',
+            'rubric_association[use_for_grading]': use_for_grading,
+            'rubric_association[purpose]': 'grading',
+        }
+        
+        # Add criteria to payload using Canvas API format
+        for idx, criterion in enumerate(criteria):
+            base_key = f"rubric[criteria][{idx}]"
+            payload[f"{base_key}[description]"] = criterion['description']
+            payload[f"{base_key}[points]"] = criterion['points']
+            payload[f"{base_key}[criterion_use_range]"] = False
+            
+            if 'long_description' in criterion and criterion['long_description']:
+                payload[f"{base_key}[long_description]"] = criterion['long_description']
+            
+            # Add ratings if provided
+            if 'ratings' in criterion:
+                for rating_idx, rating in enumerate(criterion['ratings']):
+                    payload[f"{base_key}[ratings][{rating_idx}][description]"] = rating['description']
+                    payload[f"{base_key}[ratings][{rating_idx}][points]"] = rating['points']
+        
+        return self._request('post', '/rubrics', data=payload)
+
+    def upload_submission_file(self, assignment_id: int, user_id: int, filename: str, file_bytes: bytes, content_type: str = 'application/pdf') -> Dict[str, Any]:
+        """
+        Upload a file to a user's submission context for an assignment (on behalf of the student).
+        Returns the confirmed attachment JSON including the new file id.
+
+        Flow: announce → upload to upload_url → confirm
+        """
+        size = len(file_bytes)
+        # Phase 1: Announce upload in submission context
+        announce_endpoint = f"/assignments/{assignment_id}/submissions/{user_id}/files"
+        payload = {
+            'name': filename,
+            'size': size,
+            'content_type': content_type,
+        }
+        announce = self._request('post', announce_endpoint, data=payload)
+
+        # Phase 2: Upload bytes to provided upload_url
+        upload_resp = self._execute_upload_to_url(
+            announce['upload_url'],
+            announce['upload_params'],
+            filename,
+            file_bytes,
+            content_type
+        )
+
+        # Phase 3: Confirm and return attachment metadata (contains file id)
+        confirmed = self._confirm_upload(upload_resp)
+        return confirmed
 
     # --- Private Helper Methods ---
     def _request(self, method: str, endpoint: str, **kwargs) -> Any:
@@ -435,7 +598,6 @@ class CanvasAPI:
         url = f"{self.domain}/api/v1{endpoint}"
         headers = kwargs.pop('headers', {})
         headers.update(self._get_headers())
-        print(f'DEBUG: REQUEST: {url}')
         response = requests.request(method, url, headers=headers, **kwargs)
         response.raise_for_status()
 

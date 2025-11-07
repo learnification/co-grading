@@ -435,8 +435,14 @@ class CanvasAPI:
         """
         return self._request('get', '/assignments?include[]=overrides')
     
-    def get_assignment(self, assignment_id: int) -> List[Dict[str, Any]]:
-            return self._request('get', f'/assignments/{assignment_id}')
+    def get_assignment(self, assignment_id: int) -> Dict[str, Any]:
+        """
+        Retrieves an assignment by ID, including rubric information.
+            
+        Returns:
+            Dictionary containing the assignment data including rubric
+        """
+        return self._request('get', f'/assignments/{assignment_id}?include[]=rubric')
     
     def create_assignment(
         self,
@@ -567,6 +573,43 @@ class CanvasAPI:
         # Phase 3: Confirm and return attachment metadata (contains file id)
         confirmed = self._confirm_upload(upload_resp)
         return confirmed
+
+    def grade_submission(
+        self,
+        assignment_id: int,
+        user_id: int,
+        posted_grade: Optional[str] = None,
+        rubric_assessment: Optional[Dict[str, Dict[str, Any]]] = None
+    ) -> Dict[str, Any]:
+        """
+        Grade a student submission
+        
+        Args:
+            assignment_id: The assignment ID
+            user_id: The user ID of the student
+            posted_grade: The grade to assign
+            rubric_assessment: Dictionary mapping criterion IDs to assessment data
+            
+        Returns:
+            Dictionary containing the updated submission data
+        """
+        endpoint = f"/assignments/{assignment_id}/submissions/{user_id}"
+        
+        payload: Dict[str, Any] = {}
+        
+        if posted_grade:
+            payload['submission[posted_grade]'] = posted_grade
+        
+        if rubric_assessment:
+            for criterion_id, assessment in rubric_assessment.items():
+                if 'points' in assessment:
+                    payload[f'rubric_assessment[{criterion_id}][points]'] = assessment['points']
+                if 'rating_id' in assessment:
+                    payload[f'rubric_assessment[{criterion_id}][rating_id]'] = assessment['rating_id']
+                if 'comments' in assessment:
+                    payload[f'rubric_assessment[{criterion_id}][comments]'] = assessment['comments']
+        
+        return self._request('put', endpoint, data=payload)
 
     # --- Private Helper Methods ---
     def _request(self, method: str, endpoint: str, **kwargs) -> Any:

@@ -32,6 +32,7 @@ def create_tutorial_assignment(canvas_api: CanvasAPI) -> Dict[str, Any]:
     1. An assignment in the given Canvas course
     2. A rubric with criteria
     3. A submission from the test student
+    4. Grades the submission with full marks on rubric
     
     Args:
         canvas_api: Initialized CanvasAPI instance
@@ -119,6 +120,23 @@ def create_tutorial_assignment(canvas_api: CanvasAPI) -> Dict[str, Any]:
             user_id=test_student_id,
         )
         logger.info("Sample submission uploaded and submitted successfully")
+        
+        assignment = canvas_api.get_assignment(assignment_id)
+        rubric_data = assignment.get('rubric_association', {}).get('rubric') or assignment.get('rubric', [])
+        
+        rubric_assessment = {
+            criterion['id']: {'points': criterion['points']}
+            for criterion in rubric_data
+            if criterion.get('id')
+        }
+        
+        canvas_api.grade_submission(
+            assignment_id=assignment_id,
+            user_id=test_student_id,
+            posted_grade=str(ASSIGNMENT_POINTS_POSSIBLE),
+            rubric_assessment=rubric_assessment
+        )
+        logger.info("Tutorial submission graded successfully")
     else:
         logger.warning(f"Sample submission file not found at {TUTORIAL_SUBMISSION_FILE_PATH}, skipping submission")
 

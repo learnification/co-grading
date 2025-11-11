@@ -108,8 +108,6 @@ class CanvasAPI:
             raise RuntimeError(f"Download URL not found in metadata for file_id {file_id}")
         response = requests.get(download_url)
         
-        # Log rate limits for binary file downloads
-        self._log_rate_limits(response, 'get', f'file_bytes_download:{file_id}')
         
         response.raise_for_status()
         return response.content
@@ -209,9 +207,6 @@ class CanvasAPI:
 
         response = requests.get(download_url)
         
-        # Log rate limits for file downloads
-        self._log_rate_limits(response, 'get', f'file_download:{appendedFilename}')
-        
         response.raise_for_status()
         file_data = response.json()
         
@@ -253,9 +248,6 @@ class CanvasAPI:
             raise HTTPException(status_code=500, detail="Root file found but download URL is missing.")
 
         response = requests.get(download_url)
-        
-        # Log rate limits for root file downloads
-        self._log_rate_limits(response, 'get', f'root_file_download:{appended_filename}')
         
         response.raise_for_status()
         file_data = response.json()
@@ -440,8 +432,6 @@ class CanvasAPI:
         """
         try:
             folders = self._request('get', f'/folders/by_path/{folder_name}')
-            # for f in folders:
-            #     print(f'id: {f['id']}\nname: {f['name']}\nfull_name: {f['full_name']}\ncontext_id: {f['context_id']}')
             return folders[-1] if folders else None
         except Exception:
             return None

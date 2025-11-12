@@ -93,8 +93,6 @@ The response will be parsed into a AIFeedback Pydantic model with:
     user_content = f"""Rubric Criterion:
 Name: {rubric_criterion.description}
 Maximum Points: {rubric_criterion.points}
-Possible Ratings:
-{list_of_ratings}
 
 --- 
 Human Grader's Assessment for this Criterion:

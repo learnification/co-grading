@@ -401,7 +401,7 @@ class CanvasAPI:
 
     def get_folders(self) -> List[Dict[str, Any]]:
         """Retrieves all folders in the course."""
-        return self._request('get', '/folders')
+        return self._request('get', '/folders?per_page=100')
 
     def get_folder_by_name(self, folder_name: str = 'development') -> Optional[Dict[str, Any]]:
         """Finds a folder by its name by iterating through all folders."""

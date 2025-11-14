@@ -235,6 +235,25 @@ class CanvasAPI:
         else:
             return file_data
 
+    def list_course_files(self, content_type: str = 'application/json', per_page: int = 100) -> List[Dict[str, Any]]:
+        """
+        Lists all files in the course.
+        Uses the course-level files endpoint: GET /api/v1/courses/:course_id/files
+        
+        Args:
+            content_type: Content type filter (default: 'application/json')
+            per_page: Number of results per page (default: 100)
+            
+        Returns:
+            List of file metadata dictionaries
+        """
+        try:
+            files = self._request('get', f"/files?content_types[]={content_type}&per_page={per_page}")
+            return files
+        except Exception as e:
+            logger.debug(f"Error listing course files: {e}")
+            return []
+
     def list_files_in_assignment_folder(self, assignment_id: int, application_type='json') -> List[Dict[str, Any]]:
         """
         Lists all files in the assignment-specific folder using search API.

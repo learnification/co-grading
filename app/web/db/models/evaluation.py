@@ -37,7 +37,10 @@ class BatchLLMFeedbackRequest(BaseModel):
     criteria: List[RubricCriterion]
     criteriaAssessments: Dict[str, Optional[RubricCriterionAssessment]]
     assignment: Assignment
-    extra: dict  # Contains courseId, assignmentId, userId
+    userId: str
+    gradingStartedAt: Optional[str] = None
+    gradingEndedAt: Optional[str] = None
+    gradingDurationSeconds: Optional[int] = None
 
 class AuditRetrievalRequest(BaseModel):   # For audit-retrieval
     assignmentId: int

@@ -1,12 +1,12 @@
 from fastapi import APIRouter, Header, BackgroundTasks
-from pydantic import BaseModel, SecretStr
+from pydantic import SecretStr
 from typing import Optional, List
 import asyncio
 from app.web.utils import logger
 import time
 from app.web.db.models.evaluation import AIFeedback, AIFeedbackStatus, BatchLLMFeedbackRequest, AuditRetrievalRequest, ApprovalRetrievalRequest
 from app.web.utils.canvas import CanvasAPI
-from app.autograding.feedback_audit import process_criterion_async, validate_batch_request, store_audit_data
+from app.autograding.feedback_audit import process_criterion_async, validate_batch_request, store_audit_data, generate_grading_timing_report
 
 router = APIRouter()
 
@@ -182,4 +182,37 @@ async def get_approvals(
             "approvals": 0,
             "total": 0,
             "error": f"Could not retrieve approval statistics: {str(e)}"
+        }
+
+
+@router.get("/grading-timing-report/{course_id}")
+async def get_grading_timing_report(
+    course_id: int,
+    x_canvas_token: SecretStr = Header(..., alias="X-Canvas-Token"),
+    x_canvas_base_url: Optional[str] = Header("canvas.sfu.ca", alias="X-Canvas-Base-Url"),
+):
+    """
+    Retrieves grading timing data for all submissions across all assignments in a course.
+    
+    Returns:
+    - JSON file download with courseId, totalRecords, and records array
+    """
+    try:
+        canvas_api = CanvasAPI(
+            api_token=x_canvas_token,
+            domain=x_canvas_base_url,
+            course_id=course_id
+        )
+        
+        result = generate_grading_timing_report(canvas_api, course_id)
+        
+        return result
+    
+    except Exception as e:
+        logger.error(f"Error generating grading timing report: {e}")
+        return {
+            "courseId": course_id,
+            "totalRecords": 0,
+            "records": [],
+            "error": f"Could not generate grading timing report: {str(e)}"
         }

@@ -7,7 +7,7 @@ from app.web.db.models import Assignment
 
 def generate_and_upload_guideline(
     assignment: Assignment,
-    toggles: Dict[int, bool],
+    toggles: Dict[str, bool],
     base_url: str,
     canvas_token: SecretStr,
     openai_key: SecretStr

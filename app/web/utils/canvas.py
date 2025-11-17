@@ -89,6 +89,8 @@ class CanvasAPI:
         if not download_url:
             raise RuntimeError(f"Download URL not found in metadata for file_id {file_id}")
         response = requests.get(download_url)
+        
+        
         response.raise_for_status()
         return response.content
 
@@ -186,6 +188,7 @@ class CanvasAPI:
             raise HTTPException(status_code=500, detail="File found but download URL is missing.")
 
         response = requests.get(download_url)
+        
         response.raise_for_status()
         file_data = response.json()
         
@@ -227,6 +230,7 @@ class CanvasAPI:
             raise HTTPException(status_code=500, detail="Root file found but download URL is missing.")
 
         response = requests.get(download_url)
+        
         response.raise_for_status()
         file_data = response.json()
         
@@ -385,12 +389,15 @@ class CanvasAPI:
         return self._request('get', '/folders')
 
     def get_folder_by_name(self, folder_name: str = 'development') -> Optional[Dict[str, Any]]:
-        """Finds a folder by its name by iterating through all folders."""
-        folders = self.get_folders()
-        for folder in folders:
-            if folder.get('name') == folder_name:
-                return folder
-        return None
+        """
+
+        Returns the last folder in the path hierarchy (the requested folder)
+        """
+        try:
+            folders = self._request('get', f'/folders/by_path/{folder_name}')
+            return folders[-1] if folders else None
+        except Exception:
+            return None
 
     def create_folder(self, folder_name: str = 'development', parent_folder_name: str = 'course files/') -> Dict[str, Any]:
         """Creates a folder in the course."""
@@ -429,14 +436,30 @@ class CanvasAPI:
 
         return self._request('post', endpoint, data=data)
 
-    def list_assignments(self) -> List[Dict[str, Any]]:
+    def list_assignments(self, search_term: Optional[str] = None) -> List[Dict[str, Any]]:
         """
-        Lists all assignments in the current course using Canvas API.
+        Lists assignments in the current course using Canvas API.
+        
+        Args:
+            search_term: Optional partial title to filter assignments. Only assignments
+                        with titles containing this term will be returned.
+        
+        Returns:
+            List of assignment dictionaries
         """
-        return self._request('get', '/assignments?include[]=overrides')
+        endpoint = '/assignments?include[]=overrides'
+        if search_term:
+            endpoint += f'&search_term={search_term}'
+        return self._request('get', endpoint)
     
-    def get_assignment(self, assignment_id: int) -> List[Dict[str, Any]]:
-            return self._request('get', f'/assignments/{assignment_id}')
+    def get_assignment(self, assignment_id: int) -> Dict[str, Any]:
+        """
+        Retrieves an assignment by ID, including rubric information.
+            
+        Returns:
+            Dictionary containing the assignment data including rubric
+        """
+        return self._request('get', f'/assignments/{assignment_id}?include[]=rubric')
     
     def create_assignment(
         self,
@@ -567,6 +590,43 @@ class CanvasAPI:
         # Phase 3: Confirm and return attachment metadata (contains file id)
         confirmed = self._confirm_upload(upload_resp)
         return confirmed
+
+    def grade_submission(
+        self,
+        assignment_id: int,
+        user_id: int,
+        posted_grade: Optional[str] = None,
+        rubric_assessment: Optional[Dict[str, Dict[str, Any]]] = None
+    ) -> Dict[str, Any]:
+        """
+        Grade a student submission
+        
+        Args:
+            assignment_id: The assignment ID
+            user_id: The user ID of the student
+            posted_grade: The grade to assign
+            rubric_assessment: Dictionary mapping criterion IDs to assessment data
+            
+        Returns:
+            Dictionary containing the updated submission data
+        """
+        endpoint = f"/assignments/{assignment_id}/submissions/{user_id}"
+        
+        payload: Dict[str, Any] = {}
+        
+        if posted_grade:
+            payload['submission[posted_grade]'] = posted_grade
+        
+        if rubric_assessment:
+            for criterion_id, assessment in rubric_assessment.items():
+                if 'points' in assessment:
+                    payload[f'rubric_assessment[{criterion_id}][points]'] = assessment['points']
+                if 'rating_id' in assessment:
+                    payload[f'rubric_assessment[{criterion_id}][rating_id]'] = assessment['rating_id']
+                if 'comments' in assessment:
+                    payload[f'rubric_assessment[{criterion_id}][comments]'] = assessment['comments']
+        
+        return self._request('put', endpoint, data=payload)
 
     # --- Private Helper Methods ---
     def _request(self, method: str, endpoint: str, **kwargs) -> Any:

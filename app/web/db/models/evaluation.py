@@ -33,14 +33,22 @@ class SimpleFeedbackResponse(BaseModel):
 
 GradingFeedbackResponse = Dict[int, GradingFeedback]
 
-class BatchLLMFeedbackRequest(BaseModel):
+class TimingDataFields(BaseModel):
+    gradingStartedAt: str
+    gradingEndedAt: str
+    gradingDurationSeconds: int
+    usedAutograde: bool
+    usedHighlighting: bool
+
+class BatchLLMFeedbackRequest(TimingDataFields):
     criteria: List[RubricCriterion]
     criteriaAssessments: Dict[str, Optional[RubricCriterionAssessment]]
     assignment: Assignment
     userId: str
-    gradingStartedAt: Optional[str] = None
-    gradingEndedAt: Optional[str] = None
-    gradingDurationSeconds: Optional[int] = None
+
+class TimingDataRequest(TimingDataFields):
+    assignment: Assignment
+    userId: str
 
 class AuditRetrievalRequest(BaseModel):   # For audit-retrieval
     assignmentId: int

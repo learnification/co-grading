@@ -224,7 +224,7 @@ async def get_grading_timing_report(
     x_canvas_base_url: Optional[str] = Header("canvas.sfu.ca", alias="X-Canvas-Base-Url"),
 ):
     """
-    Retrieves grading timing data for all submissions across all assignments in a course.
+    Retrieves grading timing data for all submissions across all assignments in a course
     
     Args:
         course_id: Canvas course ID

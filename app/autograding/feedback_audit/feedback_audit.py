@@ -53,8 +53,7 @@ def _get_grader_info_and_timestamp(canvas_api: CanvasAPI, assignment_id: int, us
     grader_name = canvas_api.get_grader_name(grader_id)
     
     # Generate timestamp
-    vancouver_tz = timezone(timedelta(hours=-7))
-    current_timestamp = datetime.now(vancouver_tz).isoformat()
+    current_timestamp = datetime.now(timezone.utc).isoformat()
     
     return str(grader_id), grader_name, current_timestamp
 
@@ -71,7 +70,7 @@ def _build_timing_entry(grader_id: str, grader_name: str, assignment_name: str, 
         "usedHighlighting": request.usedHighlighting
     }
 
-def store_timing_data(request, x_canvas_token, x_canvas_base_url):
+def store_timing_data(request, x_canvas_token: SecretStr, x_canvas_base_url: str):
     """Store timing data only (when audit is disabled)"""
     try:
         course_id = request.assignment.course_id
@@ -103,7 +102,7 @@ def store_timing_data(request, x_canvas_token, x_canvas_base_url):
     except Exception as upload_error:
         logger.error(f"Background: Failed to upload timing data: {upload_error}")
 
-def store_audit_data(request, results, x_canvas_token, x_canvas_base_url):
+def store_audit_data(request, results, x_canvas_token: SecretStr, x_canvas_base_url: str):
     try:
         course_id = request.assignment.course_id
         assignment_id = request.assignment.id
@@ -176,7 +175,7 @@ def generate_grading_timing_report(canvas_api: CanvasAPI, course_id: int) -> Dic
         try:
             filename = file_meta.get('display_name', '')
             assignment_id, submission_id = filename.replace('.json', '').split('_')
-            assignment_id = int(assignment_id)
+            assignment_id, submission_id = int(assignment_id), int(submission_id)
             
             audit_data = canvas_api.get_file(assignment_id, submission_id)
             
@@ -189,14 +188,7 @@ def generate_grading_timing_report(canvas_api: CanvasAPI, course_id: int) -> Dic
                 timing_records.append({
                     "assignmentId": assignment_id,
                     "submissionId": submission_id,
-                    "graderId": timing_entry["graderId"],
-                    "graderName": timing_entry["graderName"],
-                    "assignmentName": timing_entry["assignmentName"],
-                    "gradingStartedAt": timing_entry["gradingStartedAt"],
-                    "gradingEndedAt": timing_entry["gradingEndedAt"],
-                    "gradingDurationSeconds": timing_entry["gradingDurationSeconds"],
-                    "usedAutograde": timing_entry["usedAutograde"],
-                    "usedHighlighting": timing_entry["usedHighlighting"],
+                    **timing_entry
                 })
         
         except Exception as e:
@@ -210,7 +202,7 @@ def generate_grading_timing_report(canvas_api: CanvasAPI, course_id: int) -> Dic
     }
 
 
-def convert_timing_report_to_csv(report_data: Dict[str, Any], course_id: int) -> str:
+def convert_timing_report_to_csv(report_data: Dict[str, Any], course_id: int) -> Response:
     """Converts timing report data to CSV format"""
     records = report_data.get("records", [])
     
@@ -222,7 +214,11 @@ def convert_timing_report_to_csv(report_data: Dict[str, Any], course_id: int) ->
             "gradingDurationSeconds", "usedAutograde", "usedHighlighting"
         ])
         writer.writeheader()
-        return output.getvalue()
+        return Response(
+            content=output.getvalue(),
+            media_type="text/csv",
+            headers={...}
+        )
     
     output = io.StringIO()
     writer = csv.DictWriter(output, fieldnames=records[0].keys())

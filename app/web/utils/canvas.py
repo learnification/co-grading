@@ -39,15 +39,33 @@ class CanvasAPI:
             try:
                 existing_data = self.get_file(assignment_id, filename)
 
-                if 'history' in existing_data and 'history' in file_data:   
-                    max_iteration = max([entry.get('iteration', 0) for entry in existing_data['history']], default=0)  # Highest (most recent) iteration number
-                    
-                    for new_entry in file_data['history']:
-                        new_entry['iteration'] = max_iteration + 1
-                    
-                    existing_data['history'].extend(file_data['history'])
-                    existing_data['currentStatus'] = file_data.get('currentStatus', existing_data.get('currentStatus'))
-                    file_data = existing_data
+                # Merge history[] arrays
+                if 'history' in file_data:
+                    if 'history' in existing_data:
+                        # Both exist: merge by appending new entries with incremented iteration numbers
+                        max_iteration = max([entry.get('iteration', 0) for entry in existing_data['history']], default=0)
+                        
+                        for new_entry in file_data['history']:
+                            new_entry['iteration'] = max_iteration + 1
+                        
+                        existing_data['history'].extend(file_data['history'])
+                    else:
+                        # New history array: add it to existing data
+                        existing_data['history'] = file_data['history']
+                
+                # Update currentStatus if present in new data
+                if 'currentStatus' in file_data:
+                    existing_data['currentStatus'] = file_data['currentStatus']
+                
+                # Merge timing[] arrays
+                if 'timing' in file_data:
+                    if 'timing' in existing_data:
+                        # Both exist: append new timing entries to existing ones
+                        existing_data['timing'].extend(file_data['timing'])
+                    else:
+                        existing_data['timing'] = file_data['timing']
+                
+                file_data = existing_data
                             
             except FileNotFoundError as e:
                 # File doesn't exist, which is fine - just upload the new data
@@ -239,6 +257,25 @@ class CanvasAPI:
         else:
             return file_data
 
+    def list_course_files(self, content_type: str = 'application/json', per_page: int = 100) -> List[Dict[str, Any]]:
+        """
+        Lists all files in the course.
+        Uses the course-level files endpoint: GET /api/v1/courses/:course_id/files
+        
+        Args:
+            content_type: Content type filter (default: 'application/json')
+            per_page: Number of results per page (default: 100)
+            
+        Returns:
+            List of file metadata dictionaries
+        """
+        try:
+            files = self._request('get', f"/files?content_types[]={content_type}&per_page={per_page}")
+            return files
+        except Exception as e:
+            logger.debug(f"Error listing course files: {e}")
+            return []
+
     def list_files_in_assignment_folder(self, assignment_id: int, application_type='json') -> List[Dict[str, Any]]:
         """
         Lists all files in the assignment-specific folder using search API.
@@ -386,7 +423,7 @@ class CanvasAPI:
 
     def get_folders(self) -> List[Dict[str, Any]]:
         """Retrieves all folders in the course."""
-        return self._request('get', '/folders')
+        return self._request('get', '/folders?per_page=100')
 
     def get_folder_by_name(self, folder_name: str = 'development') -> Optional[Dict[str, Any]]:
         """

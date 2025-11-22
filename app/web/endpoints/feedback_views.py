@@ -1,12 +1,13 @@
-from fastapi import APIRouter, Header, BackgroundTasks
-from pydantic import BaseModel, SecretStr
+from fastapi import APIRouter, Header, BackgroundTasks, Query, HTTPException
+from fastapi.responses import Response
+from pydantic import SecretStr
 from typing import Optional, List
 import asyncio
 from app.web.utils import logger
 import time
-from app.web.db.models.evaluation import AIFeedback, AIFeedbackStatus, BatchLLMFeedbackRequest, AuditRetrievalRequest, ApprovalRetrievalRequest
+from app.web.db.models.evaluation import AIFeedback, AIFeedbackStatus, BatchLLMFeedbackRequest, TimingDataRequest, AuditRetrievalRequest, ApprovalRetrievalRequest
 from app.web.utils.canvas import CanvasAPI
-from app.autograding.feedback_audit import process_criterion_async, validate_batch_request, store_audit_data
+from app.autograding.feedback_audit import process_criterion_async, validate_batch_request, store_audit_data, store_timing_data, generate_grading_timing_report, convert_timing_report_to_csv
 
 router = APIRouter()
 
@@ -61,6 +62,36 @@ async def get_llm_feedback_batch(
             feedback="Error auditing feedback. Check logs.",
             status=AIFeedbackStatus.FAILURE
         ) for _ in request.criteria]
+
+
+@router.post("/store-timing")
+async def store_timing(
+    request: TimingDataRequest,
+    background_tasks: BackgroundTasks,
+    x_canvas_token: SecretStr = Header(..., alias="X-Canvas-Token"),
+    x_canvas_base_url: str = Header(..., alias="X-Canvas-Base-Url"),
+):
+    """Store timing data only (when audit feature is disabled)"""
+    
+    try:
+        background_tasks.add_task(
+            store_timing_data,
+            request,
+            x_canvas_token,
+            x_canvas_base_url
+        )
+        
+        return {
+            "message": "Timing data storage scheduled successfully",
+            "status": "SUCCESS"
+        }
+        
+    except Exception as e:
+        logger.error(f"Error scheduling timing data storage: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to schedule timing data storage: {str(e)}"
+        )
 
 
 @router.post("/audit-retrieval")
@@ -183,3 +214,39 @@ async def get_approvals(
             "total": 0,
             "error": f"Could not retrieve approval statistics: {str(e)}"
         }
+
+
+@router.get("/grading-timing-report/{course_id}")
+async def get_grading_timing_report(
+    course_id: int,
+    format: str = Query("json", description="Output format: 'json' or 'csv'"),
+    x_canvas_token: SecretStr = Header(..., alias="X-Canvas-Token"),
+    x_canvas_base_url: Optional[str] = Header("canvas.sfu.ca", alias="X-Canvas-Base-Url"),
+):
+    """
+    Retrieves grading timing data for all submissions across all assignments in a course
+    
+    Args:
+        course_id: Canvas course ID
+        format: Output format - 'json' (default) or 'csv' for CSV download
+    """
+    try:
+        canvas_api = CanvasAPI(
+            api_token=x_canvas_token,
+            domain=x_canvas_base_url,
+            course_id=course_id
+        )
+        
+        result = generate_grading_timing_report(canvas_api, course_id)
+        
+        if format.lower() == "csv":
+            return convert_timing_report_to_csv(result, course_id)
+        
+        return result
+    
+    except Exception as e:
+        logger.error(f"Error generating grading timing report: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Could not generate grading timing report: {str(e)}"
+        )

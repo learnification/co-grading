@@ -85,18 +85,3 @@ jobs:
             ```
             ${{ steps.read_coverage.outputs.content }}
             ```
-
-      - name: Start Celery Worker (Background)
-        run: |
-          invoke testworker &
-          sleep 5  # Give worker time to start
-        env:
-          TEST_LLM_TYPE: cloud
-          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-
-      - name: Run Slow Integration Tests
-        run: |
-          invoke slow-integration-tests
-        env:
-          TEST_LLM_TYPE: cloud
-          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}

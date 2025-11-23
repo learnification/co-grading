@@ -1,4 +1,4 @@
-from app.web.db.models.evaluation import AutogradeThresholdRequest, AutogradeToggleRequest, AutogradeCheckRequest, ThresholdCheckRequest
+from app.web.db.models.evaluation import AutogradeThresholdRequest, AutogradeToggleRequest, AutogradeCheckRequest, ThresholdCheckRequest, Settings
 from celery.result import AsyncResult
 from app.celery import celery_app
 from fastapi import APIRouter, Header, HTTPException
@@ -241,3 +241,97 @@ async def get_threshold(
     except Exception as e:
         logger.error(f"Error getting threshold: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error getting threshold: {str(e)}")
+
+
+@router.get("/get-toggles/{course_id}/{assignment_id}")
+async def get_toggles(
+    course_id: int,
+    assignment_id: int,
+    x_canvas_token: SecretStr = Header(..., alias="X-Canvas-Token"),
+    x_canvas_base_url: str = Header("https://canvas.sfu.ca", alias="X-Canvas-Base-Url"),
+) -> Settings:
+    """
+    Retrieves feature settings for a specific assignment.
+    
+    Looks for development/<assignmentId>/<assignmentId>_settings.json file.
+    If file doesn't exist, creates it with all features enabled by default.
+    
+    Args:
+        - course_id: Canvas course ID
+        - assignment_id: Canvas assignment ID
+    
+    Returns:
+        - Settings object with autogradingEnabled, auditEnabled, highlightEnabled
+    """
+    try:
+        canvas_api = CanvasAPI(
+            api_token=x_canvas_token,
+            domain=x_canvas_base_url,
+            course_id=course_id
+        )
+        
+        try:
+            settings_data = canvas_api.get_file(assignment_id, "settings")
+            return Settings(**settings_data)
+            
+        except FileNotFoundError:
+            default_settings = {
+                "autogradingEnabled": True,
+                "auditEnabled": True,
+                "highlightEnabled": True
+            }
+            
+            canvas_api.upload_file(default_settings, assignment_id, "settings", overwrite=True)
+            
+            logger.info(f"Created default settings file for assignment {assignment_id}")
+            return Settings(**default_settings)
+            
+    except Exception as e:
+        logger.error(f"Error getting feature settings: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error getting feature settings: {str(e)}")
+
+
+@router.post("/set-toggles/{course_id}/{assignment_id}")
+async def set_toggles(
+    course_id: int,
+    assignment_id: int,
+    request: Settings,
+    x_canvas_token: SecretStr = Header(..., alias="X-Canvas-Token"),
+    x_canvas_base_url: str = Header("https://canvas.sfu.ca", alias="X-Canvas-Base-Url"),
+) -> Settings:
+    """
+    Updates feature settings for a specific assignment.
+    
+    Updates development/<assignmentId>/<assignmentId>_settings.json file
+    with new values for all three features.
+    
+    Args:
+        - course_id: Canvas course ID
+        - assignment_id: Canvas assignment ID
+        - request: Settings object with all three boolean fields
+    
+    Returns:
+        - Updated Settings object
+    """
+    try:
+        canvas_api = CanvasAPI(
+            api_token=x_canvas_token,
+            domain=x_canvas_base_url,
+            course_id=course_id
+        )
+        
+        settings_data = {
+            "autogradingEnabled": request.autogradingEnabled,
+            "auditEnabled": request.auditEnabled,
+            "highlightEnabled": request.highlightEnabled
+        }
+        
+        canvas_api.upload_file(settings_data, assignment_id, "settings", overwrite=True)
+        
+        logger.info(f"Updated feature settings for assignment {assignment_id}: {settings_data}")
+        
+        return Settings(**settings_data)
+        
+    except Exception as e:
+        logger.error(f"Error updating feature settings: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error updating feature settings: {str(e)}")

@@ -76,7 +76,10 @@ class AutogradeThresholdRequest(BaseModel):
 class ThresholdCheckRequest(BaseModel):
     courseId: int
 
- 
+class Settings(BaseModel):
+    autogradingEnabled: bool
+    auditEnabled: bool
+    highlightEnabled: bool
 
 class AIFeedbackStatus(str, Enum):
     SUCCESS = "SUCCESS"

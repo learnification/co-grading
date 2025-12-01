@@ -23,16 +23,18 @@ def build_openrouter_llm(streaming: bool = False):
     )
 
 
-def build_openai_gpt4_mini(streaming: bool = False, api_key: str = None):
-    """Build OpenAI GPT-4o-mini with user-provided API key."""
+def build_openai_gpt5_mini(streaming: bool = False, api_key: str = None):
+    """Build OpenAI GPT-5-mini with user-provided API key."""
     if not api_key:
-        raise ValueError("OpenAI API key is required for GPT-4.1-mini")
-    return ChatOpenAI(
-        model="gpt-4.1-mini-2025-04-14",
+        raise ValueError("OpenAI API key is required for GPT-5-mini")
+    llm = ChatOpenAI(
+        model="gpt-5-mini",
         api_key=api_key,
-        temperature=0.1,
+        temperature=1.0,  # gpt-5-mini only supports default temperature of 1
         max_retries=3,
     )
+
+    return llm.bind(temperature=1.0)
 
 
 def build_instructor():

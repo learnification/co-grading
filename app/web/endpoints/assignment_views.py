@@ -27,7 +27,7 @@ def generate_grading_feedback(
     
     if x_user_openai_key:
         request_data["openai_token"] = x_user_openai_key.get_secret_value()
-        logger.info("OpenAI token provided, will use GPT-4.1-mini for grading")
+        logger.info("OpenAI token provided, will use GPT-5-mini for grading")
     
     # Enqueue the Celery task
     task = schedule_evaluation.delay(request_data)

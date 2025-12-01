@@ -95,7 +95,7 @@ async def autograde(request: AutogradeDto, openai_key: str = None) -> Dict:
     processor = ProcessorFactory.get_processor(request.submission.submission_type)
     content = processor.process(request.submission)
     
-    llm_name = 'gpt-4.1-mini-2025-04-14' if openai_key else 'llama3.2'
+    llm_name = 'gpt-5-mini' if openai_key else 'llama3.2'
         
     llm = build_llm_for_task(llm_name, openai_key, streaming=False)
     

@@ -14,7 +14,7 @@ def create_rubric_guideline(assignment: Assignment, toggles: Dict[str, bool], op
     Workflow for enhancing a rubric with AI-generated sub-rules.
     This should be run once per assignment.
     """
-    llm_name = 'gpt-4.1-mini-2025-04-14'
+    llm_name = 'gpt-5-mini'
 
     llm = build_llm_for_task(llm_name, openai_key, streaming=False).with_structured_output(GeneratedGuideline)
 

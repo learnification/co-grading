@@ -21,7 +21,7 @@ def find_criterion_violations(
             CriterionHighlights containing violations found
         """
         
-        llm_name = 'gpt-4.1-mini-2025-04-14'
+        llm_name = 'gpt-5-mini'
         llm = build_llm_for_task(llm_name, openai_key, streaming=False)
         
         extractor = llm.with_structured_output(CriterionHighlights)

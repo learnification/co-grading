@@ -1,7 +1,7 @@
 from functools import partial
 
 from pydantic import SecretStr
-from .ollama import build_llm, build_openrouter_llm, build_openai_gpt4_mini
+from .ollama import build_llm, build_openrouter_llm, build_openai_gpt5_mini
 import os
 
 
@@ -29,7 +29,7 @@ def get_llm_map():
 def get_gpt_map():
     """Return the OpenAI GPT models map."""
     return {
-        "gpt-4.1-mini-2025-04-14": build_openai_gpt4_mini
+        "gpt-5-mini": build_openai_gpt5_mini
     }
 
 def build_llm_for_task(llm_name: str, openai_token: SecretStr = None, streaming: bool = False):

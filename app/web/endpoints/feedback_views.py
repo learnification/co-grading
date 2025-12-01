@@ -26,7 +26,7 @@ async def get_llm_feedback_batch(
         return request_invalid
     
     try:
-        llm_name = 'gpt-4.1-mini-2025-04-14' if x_user_openai_key else 'llama3.2'
+        llm_name = 'gpt-5-mini' if x_user_openai_key else 'llama3.2'
         
         logger.info(f"Auditing {len(request.criteria)} criteria in parallel")
         start = time.time()

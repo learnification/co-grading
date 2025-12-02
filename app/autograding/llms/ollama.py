@@ -31,10 +31,7 @@ def build_openai_gpt5_mini(streaming: bool = False, api_key: str = None):
         model="gpt-5-mini",
         api_key=api_key,
         temperature=1.0,  # gpt-5-mini only supports default temperature of 1
-        max_retries=3,
-        reasoning = {
-            "effort" : "low"
-        }
+        max_retries=3
     )
 
     return llm.bind(temperature=1.0)

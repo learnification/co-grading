@@ -54,6 +54,12 @@ CRITICAL: Your evaluation strictness must be INVERSELY proportional to the stude
 
 Current Score Context: {percentage_score} (Tier: {score_tier})
 
+WRITING STYLE:
+- Write in THIRD-PERSON about the feedback (e.g., start with the "The feedback...")
+- Evaluate how well the feedback justifies the score, and tie in suggestions if necessary, but respect the THIRD-PERSON tone
+- Use formal, evaluative language - write as if evaluating the feedback as a third-party reviewer
+- Avoid first-person directives ("you should", "add", "mention") and don't mention the grader - instead describe what the feedback does or doesn't do
+
 Instructions:
 1. Analyze the human grader's comments and selected rating for this rubric criterion, calibrating your expectations based on the score tier above.
 

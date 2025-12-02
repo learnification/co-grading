@@ -41,6 +41,10 @@ IMPORTANT:
 - Keep instructions simple and focused on what to highlight
 - Do NOT suggest highlighting for correct sections
 - Do NOT add analysis instructions like "assess quality" or "note frequency"
+- Do NOT include specific instances or examples (e.g., do NOT write "for example, claims that..." or "such as..." or any example statements)
+- Write general instructions only - describe what types of content to highlight, not specific example cases
+
+CRITICAL: MAIN AIM IS FOCUSED CLARITY FOR THE INSTRUCTIONS. MAKE IT CONCISE, KEEP UNDER 40 WORDS UNLESS ABSOLUTELY NECESSARY
 
 Here is the assignment description:
 {assignment_description}

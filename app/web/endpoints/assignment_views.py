@@ -9,9 +9,36 @@ from typing import Optional
 from pydantic import SecretStr
 from app.web.utils import CanvasAPI
 from app.autograding.autograde_assignment import autograde
+from app.autograding.llms.ollama import build_openai_gpt5_mini
 import time
 
 router = APIRouter()
+
+@router.get("/test-llm", response_model=dict)
+def test_llm(
+    x_user_openai_key: SecretStr = Header(..., alias="X-User-OpenAI-Key")
+):
+    """
+    Test endpoint to verify if OpenAPI key is working (primarily targetted for testing pre-user studies)
+    Makes a minimal API call to validate the key.
+    """
+    try:
+
+        llm = build_openai_gpt5_mini(api_key=x_user_openai_key.get_secret_value())
+        
+        response = llm.invoke("Say hello")
+        
+        return {
+            "status": "success",
+            "message": "OpenAI API key is valid and working",
+            "test_response": response.content if hasattr(response, 'content') else str(response)
+        }
+    except ValueError as e:
+        logger.error(f"Invalid OpenAI key format: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Invalid OpenAI API key: {str(e)}")
+    except Exception as e:
+        logger.error(f"Error testing OpenAI key: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to test OpenAI key: {str(e)}")
 
 @router.post("/generate", response_model=dict)
 def generate_grading_feedback(
